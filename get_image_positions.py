@@ -56,9 +56,9 @@ def create_relative_position(array, center_field) -> list:
     return full_range
 
 
-def get_positions_from_xml(path) -> (list, list):
+def get_positions_from_xml(xml_path) -> (list, list):
     """read xml metadata and find image metadata (position, channel name) """
-    with open(path, 'r', encoding='utf-8') as f:
+    with open(xml_path, 'r', encoding='utf-8') as f:
         xml_file = f.read()
         f.close()
 
@@ -76,12 +76,12 @@ def get_positions_from_xml(path) -> (list, list):
     return x_pos, y_pos
 
 
-def get_image_postions(path):
+def get_image_postions(xml_path):
     """specify path to read xml file
     function finds metadata about image location and computes
     relative location to central image."""
     # get microscope coordinates of images from xml file
-    x_pos, y_pos = get_positions_from_xml(path)
+    x_pos, y_pos = get_positions_from_xml(xml_path)
 
     # find central field location in the list
     center_field_n = median_position(x_pos)  # x or y doesn't matter
@@ -124,12 +124,17 @@ def get_image_postions(path):
 def get_target_per_channel_arrangement(xml_path, target):
     """ target is either 'plane' or 'field' """
 
-    xml = ET.parse(xml_path)
-    root = xml.getroot()
-    Images = root.find('Images')
+    with open(xml_path, 'r', encoding='utf-8') as f:
+        xml_file = f.read()
+        f.close()
+
+    xml_file = xml_file.replace('xmlns="http://www.perkinelmer.com/PEHH/HarmonyV5"', '')
+
+    xml = ET.fromstring(xml_file)
+    tag_Images = xml.find('Images')
 
     metadata_list = []
-    for i in Images:
+    for i in tag_Images:
         # field id, plane id, channel name, file name
         metadata_list.append([int(i.find('FieldID').text), int(i.find('PlaneID').text), i.find('ChannelName').text, i.find('URL').text])
 

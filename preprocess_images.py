@@ -8,7 +8,6 @@ from utilities import alphaNumOrder
 def equalize_histograms(img_list: list, contrast_limit: int = 127, grid_size: (int, int)= (41, 41)) -> list:
     """ function for adaptive normalization of image histogram CLAHE """
 
-    print('equalizing histograms')
     clahe = cv.createCLAHE(contrast_limit, grid_size)
     img_list = list(map(clahe.apply, img_list))
     #for i in range(0, len(img_list)):
@@ -19,7 +18,6 @@ def equalize_histograms(img_list: list, contrast_limit: int = 127, grid_size: (i
 def read_images(path: [str, list], is_dir: bool) -> list:
     """read images in natural order (with respect to numbers)"""
 
-    print('reading images')
     allowed_extensions = ('tif', 'tiff')
 
     if is_dir == True:
