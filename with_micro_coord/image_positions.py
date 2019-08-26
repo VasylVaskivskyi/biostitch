@@ -183,12 +183,17 @@ def get_image_sizes(xml_path, main_channel, images):
 def get_target_per_channel_arrangement(xml_path, target):
     """ target is either 'plane' or 'field' """
 
-    xml = ET.parse(xml_path)
-    root = xml.getroot()
-    Images = root.find('Images')
+    with open(xml_path, 'r', encoding='utf-8') as f:
+        xml_file = f.read()
+        f.close()
+
+    xml_file = xml_file.replace('xmlns="http://www.perkinelmer.com/PEHH/HarmonyV5"', '')
+
+    xml = ET.fromstring(xml_file)
+    tag_Images = xml.find('Images')
 
     metadata_list = []
-    for i in Images:
+    for i in tag_Images:
         # field id, plane id, channel name, file name
         metadata_list.append([int(i.find('FieldID').text), int(i.find('PlaneID').text), i.find('ChannelName').text, i.find('URL').text])
 

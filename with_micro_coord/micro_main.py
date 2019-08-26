@@ -1,6 +1,9 @@
 import tifffile as tif
 import gc 
 import numpy as np
+import dask
+import dask.array as da
+
 
 from datetime import datetime
 from image_positions import get_image_sizes, get_image_paths_for_fields_per_channel, get_image_paths_for_planes_per_channel
@@ -62,12 +65,24 @@ del img_list, images, result_plane, result_channel, ids, x_size, y_size
 gc.collect()
 
 
-
 paths = [img_out_dir + ch_name + '.tif' for ch_name in planes_path_list.keys()]
+
+lazy_arrays = [dask.delayed(tif.imread(p)) for p in paths]
+final_path = img_out_dir + 'stitching_result.tif'
+
+tif.imwrite(
+    final_path,
+    da.stack(
+        [da.from_delayed(x, shape=x._obj.shape, dtype=x._obj.dtype) for x in lazy_arrays], axis=3
+    )
+)
+
+
+'''
 tif.imwrite(img_out_dir + 'stitching_result.tif',
             np.moveaxis(np.array([tif.imread(p) for p in paths], ndmin=4), 0,3)
             )
-
+'''
 
 fin = datetime.now()
 print('elapsed time', fin-st)
