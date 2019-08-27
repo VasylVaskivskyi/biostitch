@@ -6,6 +6,7 @@ import dask.array as da
 import platform
 
 from datetime import datetime
+
 from image_positions import load_xml_tag_Images, get_image_sizes, get_image_paths_for_fields_per_channel, get_image_paths_for_planes_per_channel
 from preprocess_images import read_images, create_z_projection_for_initial_stitching, equalize_histograms
 from stitch_images import stitch_images
@@ -43,8 +44,10 @@ def stitch_big_image(channel, planes_path_list, ids, x_size, y_size, img_out_dir
         result_plane = stitch_images(images, ids, x_size, y_size)
         result_channel.append(result_plane)
         j += 1
+    final_image = np.stack(result_channel, axis=0)
     print('writing channel')
-    tif.imwrite(img_out_dir + channel + '.tif', np.stack(result_channel, axis=0))
+    #tif.imwrite(img_out_dir + channel + '.tif', final_image)
+    return final_image
 
 
 def main():
@@ -71,26 +74,33 @@ def main():
     z_proj = stitch_images(images, ids, x_size, y_size)
     tif.imwrite(img_out_dir + 'coord_test.tif', z_proj)
 
+    nrows,ncols = z_proj.shape
+    n_planes = len(planes_path_list[main_channel])
+    n_channels = len(planes_path_list.keys())
+    
     del images, z_proj, z_max_img_list, fields_path_list
     gc.collect()
-
-
+    
+    final_image = np.zeros((n_planes, nrows, ncols, n_channels), dtype=np.uint16)
+    c = 0
     for channel in planes_path_list.keys():
-        stitch_big_image(channel, planes_path_list, ids, x_size, y_size, img_out_dir)
-
+        final_image[:, :, :, c] = stitch_big_image(channel, planes_path_list, ids, x_size, y_size, img_out_dir)
+    c += 1
 
     del ids, x_size, y_size
     gc.collect()
+    final_path = img_out_dir + 'stitching_result.tif'
+    tif.imwrite(final_path, final_image)
 
-
+    '''
     paths = [img_out_dir + ch_name + '.tif' for ch_name in planes_path_list.keys()]
 
     lazy_arrays = [dask.delayed(tif.imread(p)) for p in paths]
     lazy_arrays = [da.from_delayed(x, shape=x._obj.shape, dtype=x._obj.dtype) for x in lazy_arrays]
     final_path = img_out_dir + 'stitching_result.tif'
 
-    tif.imwrite(final_path, da.stack(lazy_arrays, axis=3))
-
+    
+    '''
 
     '''
     tif.imwrite(img_out_dir + 'stitching_result.tif',
