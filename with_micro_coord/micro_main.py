@@ -5,13 +5,29 @@ import dask
 import dask.array as da
 import platform
 
-
 from datetime import datetime
 from image_positions import get_image_sizes, get_image_paths_for_fields_per_channel, get_image_paths_for_planes_per_channel
 from preprocess_images import read_images, create_z_projection_for_initial_stitching, equalize_histograms
 from stitch_images import stitch_images
 
-def stitch_big_image(channel):
+
+# for linux limit memory usage
+def memory_limit():
+    soft, hard = resource.getrlimit(resource.RLIMIT_AS)
+    resource.setrlimit(resource.RLIMIT_AS, ((get_memory() * 1024) - 2048, hard)) #reserve 2 gigs
+
+def get_memory():
+    with open('/proc/meminfo', 'r') as mem:
+        free_memory = 0
+        for i in mem:
+            sline = i.split()
+            if str(sline[0]) == 'MemAvailable:':
+                free_memory = int(sline[1])
+                break
+    return free_memory
+
+
+def stitch_big_image(channel, planes_path_list, img_out_dir, ids, x_size, y_size):
     # write channel multilayer image to file
     print('processing channel ', channel)
     result_channel = []
@@ -21,14 +37,15 @@ def stitch_big_image(channel):
         print('reading images')
         img_list = read_images(plane, is_dir=False)
         print('equalizing histograms')
-        images = equalize_histograms(img_list, contrast_limit=101,
-                                    grid_size=(37, 37))  # import images and correct uneven illumination
+        # import images and correct uneven illumination
+        images = equalize_histograms(img_list, contrast_limit=101, grid_size=(37, 37))
         print('stitching')
         result_plane = stitch_images(images, ids, x_size, y_size)
         result_channel.append(result_plane)
         j += 1
     print('writing channel')
     tif.imwrite(img_out_dir + channel + '.tif', np.stack(result_channel, axis=0))
+
 
 def main():
     st = datetime.now()
@@ -89,25 +106,13 @@ def main():
     print('elapsed time', fin-st)
 
 
-# for linux limit memory usage
-def memory_limit():
-    soft, hard = resource.getrlimit(resource.RLIMIT_AS)
-    resource.setrlimit(resource.RLIMIT_AS, ((get_memory() * 1024) - 2048, hard)) #reserve 2 gigs
 
-def get_memory():
-    with open('/proc/meminfo', 'r') as mem:
-        free_memory = 0
-        for i in mem:
-            sline = i.split()
-            if str(sline[0]) == 'MemAvailable:':
-                free_memory = int(sline[1])
-                break
-    return free_memory
 
 
 if __name__ == '__main__':
     if platform.system() == 'Windows':
         main()
     elif platform.system() == 'Linux':
+        import resource
         memory_limit()
         main()
