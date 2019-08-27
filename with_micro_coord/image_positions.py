@@ -54,9 +54,7 @@ def create_relative_position(array, center_field) -> list:
     full_range.extend(plus_sorted)
     return full_range
 
-
-def get_positions_from_xml(xml_path, main_channel) -> (list, list):
-    """read xml metadata and find image metadata (position, channel name) """
+def load_xml_tag_Images(xml_path):
     with open(xml_path, 'r', encoding='utf-8') as f:
         xml_file = f.read()
         f.close()
@@ -65,6 +63,11 @@ def get_positions_from_xml(xml_path, main_channel) -> (list, list):
 
     xml = ET.fromstring(xml_file)
     tag_Images = xml.find('Images')
+    return tag_Images
+
+
+def get_positions_from_xml(tag_Images, main_channel) -> (list, list):
+    """read xml metadata and find image metadata (position, channel name) """
 
     x_resol = '{:.20f}'.format(float(tag_Images[0].find('ImageResolutionX').text))
     y_resol = '{:.20f}'.format(float(tag_Images[0].find('ImageResolutionY').text))
@@ -83,12 +86,12 @@ def get_positions_from_xml(xml_path, main_channel) -> (list, list):
     return x_pos, y_pos
 
 
-def get_image_positions(xml_path, main_channel):
+def get_image_positions(tag_Images, main_channel):
     """specify path to read xml file
     function finds metadata about image location and computes
     relative location to central image."""
     # get microscope coordinates of images from xml file
-    x_pos, y_pos = get_positions_from_xml(xml_path, main_channel)
+    x_pos, y_pos = get_positions_from_xml(tag_Images, main_channel)
 
     # find central field location in the list
     center_field_n = median_position(x_pos)  # x or y doesn't matter
@@ -143,8 +146,8 @@ def get_image_positions(xml_path, main_channel):
     return id_df, x_df, y_df
 
 
-def get_image_sizes(xml_path, main_channel, images):
-    id_df, x_df, y_df = get_image_positions(xml_path, main_channel)
+def get_image_sizes(tag_Images, main_channel, images):
+    id_df, x_df, y_df = get_image_positions(tag_Images, main_channel)
     nrows, ncols = id_df.shape
     # pd.options.display.width = 0
     x_size = pd.DataFrame(columns=x_df.columns, index=x_df.index)
@@ -177,20 +180,11 @@ def get_image_sizes(xml_path, main_channel, images):
 
     return id_df, x_size, y_size
 
-
-
 # ----------- Get full path of each image im xml ----------
-def get_target_per_channel_arrangement(xml_path, target):
+
+
+def get_target_per_channel_arrangement(tag_Images, target):
     """ target is either 'plane' or 'field' """
-
-    with open(xml_path, 'r', encoding='utf-8') as f:
-        xml_file = f.read()
-        f.close()
-
-    xml_file = xml_file.replace('xmlns="http://www.perkinelmer.com/PEHH/HarmonyV5"', '')
-
-    xml = ET.fromstring(xml_file)
-    tag_Images = xml.find('Images')
 
     metadata_list = []
     for i in tag_Images:
@@ -226,8 +220,8 @@ def get_target_per_channel_arrangement(xml_path, target):
     return targets_per_channel
 
 
-def get_image_paths_for_planes_per_channel(img_dir, xml_path):
-    channel_plane_arr = get_target_per_channel_arrangement(xml_path, target='plane')
+def get_image_paths_for_planes_per_channel(img_dir, tag_Images):
+    channel_plane_arr = get_target_per_channel_arrangement(tag_Images, target='plane')
     channel_paths = {}
     for channel in channel_plane_arr:
         plane_paths = []
@@ -238,8 +232,8 @@ def get_image_paths_for_planes_per_channel(img_dir, xml_path):
 
 
 
-def get_image_paths_for_fields_per_channel(img_dir, xml_path):
-    channel_field_arr = get_target_per_channel_arrangement(xml_path, target='field')
+def get_image_paths_for_fields_per_channel(img_dir, tag_Images):
+    channel_field_arr = get_target_per_channel_arrangement(tag_Images, target='field')
     channel_paths = {}
     for channel in channel_field_arr:
         field_paths = []

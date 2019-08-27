@@ -6,7 +6,7 @@ import dask.array as da
 import platform
 
 from datetime import datetime
-from image_positions import get_image_sizes, get_image_paths_for_fields_per_channel, get_image_paths_for_planes_per_channel
+from image_positions import load_xml_tag_Images, get_image_sizes, get_image_paths_for_fields_per_channel, get_image_paths_for_planes_per_channel
 from preprocess_images import read_images, create_z_projection_for_initial_stitching, equalize_histograms
 from stitch_images import stitch_images
 
@@ -27,9 +27,9 @@ def get_memory():
     return free_memory
 
 
-def stitch_big_image(channel, planes_path_list, img_out_dir, ids, x_size, y_size):
+def stitch_big_image(channel, planes_path_list, ids, x_size, y_size, img_out_dir):
     # write channel multilayer image to file
-    print('processing channel ', channel)
+    print('\nprocessing channel ', channel)
     result_channel = []
     j = 0
     for plane in planes_path_list[channel]:
@@ -58,15 +58,15 @@ def main():
 
     # -------- Initial stitching ------------
     main_channel = 'DAPI'
-
-    fields_path_list = get_image_paths_for_fields_per_channel(img_dir, xml_path)
-    planes_path_list = get_image_paths_for_planes_per_channel(img_dir, xml_path)
+    tag_Images = load_xml_tag_Images(xml_path)
+    fields_path_list = get_image_paths_for_fields_per_channel(img_dir, tag_Images)
+    planes_path_list = get_image_paths_for_planes_per_channel(img_dir, tag_Images)
 
     z_max_img_list = create_z_projection_for_initial_stitching(main_channel, fields_path_list)
     images = equalize_histograms(z_max_img_list)
 
-    ids, x_size, y_size = get_image_sizes(xml_path, main_channel, images)
-    y_size.iloc[1:,:] = y_size.iloc[1:,:] - 1
+    ids, x_size, y_size = get_image_sizes(tag_Images, main_channel, images)
+    y_size.iloc[1:, :] = y_size.iloc[1:, :] - 1
 
     z_proj = stitch_images(images, ids, x_size, y_size)
     tif.imwrite(img_out_dir + 'coord_test.tif', z_proj)
@@ -76,7 +76,7 @@ def main():
 
 
     for channel in planes_path_list.keys():
-        stitch_big_image(channel)
+        stitch_big_image(channel, planes_path_list, ids, x_size, y_size, img_out_dir)
 
 
     del ids, x_size, y_size
@@ -86,14 +86,10 @@ def main():
     paths = [img_out_dir + ch_name + '.tif' for ch_name in planes_path_list.keys()]
 
     lazy_arrays = [dask.delayed(tif.imread(p)) for p in paths]
+    lazy_arrays = [da.from_delayed(x, shape=x._obj.shape, dtype=x._obj.dtype) for x in lazy_arrays]
     final_path = img_out_dir + 'stitching_result.tif'
 
-    tif.imwrite(
-        final_path,
-        da.stack(
-            [da.from_delayed(x, shape=x._obj.shape, dtype=x._obj.dtype) for x in lazy_arrays], axis=3
-        )
-    )
+    tif.imwrite(final_path, da.stack(lazy_arrays, axis=3))
 
 
     '''
