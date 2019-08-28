@@ -39,10 +39,6 @@ def read_images(path: [str, list], is_dir: bool) -> list:
     return img_list
 
 
-def plus1(a):
-    return [a+1]
-
-
 def create_z_projection_for_initial_stitching(main_channel: str, path_list: dict) -> list:
     channel = path_list[main_channel]
     # read images, convert them into stack, get max projection
@@ -53,13 +49,3 @@ def create_z_projection_for_initial_stitching(main_channel: str, path_list: dict
     #   z_max_img_list.append(np.max(np.stack(read_images(field, is_dir=False), axis=0), axis=0))
 
     return z_max_img_list
-
-
-
-
-def preprocess_images(img_dir: str) -> list:
-    """Function wrapper that imports images and does preprocessing(histogram equalization)"""
-
-    img_list = read_images(img_dir)
-    equalized_images = equalize_histograms(img_list)
-    return equalized_images

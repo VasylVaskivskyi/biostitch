@@ -146,27 +146,31 @@ def get_image_positions(tag_Images, main_channel):
     return id_df, x_df, y_df
 
 
-def get_image_sizes(tag_Images, main_channel, images):
+def get_image_sizes(tag_Images, main_channel):
     id_df, x_df, y_df = get_image_positions(tag_Images, main_channel)
     nrows, ncols = id_df.shape
     # pd.options.display.width = 0
     x_size = pd.DataFrame(columns=x_df.columns, index=x_df.index)
     y_size = pd.DataFrame(columns=y_df.columns, index=y_df.index)
 
+    # assuming that all images are of the same size, so default image size from first image in xml are taken
+    x = int(tag_Images[0].find('ImageSizeX').text)
+    y = int(tag_Images[0].find('ImageSizeY').text)
+
     j = 0
     for i in id_df.iloc[:, 0]:
         if i != 'zeros':
-            x_size.iloc[j, 0] = images[i].shape[1]
+            x_size.iloc[j, 0] = x
         j += 1
 
     j = 0
     for i in id_df.iloc[0, :]:
         if i != 'zeros':
-            y_size.iloc[0, j] = images[i].shape[0]
+            y_size.iloc[0, j] = y
         j += 1
 
     y_size.iloc[0, :] = y_size.iloc[0, :].fillna(method='ffill', axis=0).fillna(method='bfill', axis=0).astype(np.int64)
-    # axis 0 because series doesn't have axis 1
+    # axis=0 because series don't have axis 1
     x_size.iloc[:, 0] = x_size.iloc[:, 0].fillna(method='ffill', axis=0).fillna(method='bfill', axis=0).astype(np.int64)
 
     for n in range(1, ncols):
