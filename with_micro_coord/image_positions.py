@@ -133,8 +133,6 @@ def get_image_positions(tag_Images, main_channel):
     x_df = id_df.copy()
     y_df = id_df.copy()
 
-    for i in id_full_range:
-        id_df.loc[i[1], i[0]] = i[2]
 
     for i in range(0, len(id_full_range)):
         id_df.loc[id_full_range[i][1], id_full_range[i][0]] = id_full_range[i][2]
@@ -169,18 +167,26 @@ def get_image_sizes(tag_Images, main_channel):
             y_size.iloc[0, j] = y
         j += 1
 
-    y_size.iloc[0, :] = y_size.iloc[0, :].fillna(method='ffill', axis=0).fillna(method='bfill', axis=0).astype(np.int64)
+
     # axis=0 because series don't have axis 1
-    x_size.iloc[:, 0] = x_size.iloc[:, 0].fillna(method='ffill', axis=0).fillna(method='bfill', axis=0).astype(np.int64)
+    x_size.iloc[:, 0] = int(round(x_size.iloc[:, 0].mean()))
+    y_size.iloc[0, :] = int(round(y_size.iloc[0, :].mean()))
+
+    # fill nan with mean values of cols and rows
 
     for n in range(1, ncols):
         x_size.iloc[:, n] = x_df.iloc[:, n - 1].subtract(x_df.iloc[:, n])
+        #x_size.iloc[:, n] = int(round(x_size.iloc[:, n].mean()))
 
     for n in range(1, nrows):
         y_size.iloc[n, :] = y_df.iloc[n, :].subtract(y_df.iloc[n - 1, :])
+        #y_size.iloc[n, :] = int(round(y_size.iloc[n, :].mean()))
 
-    x_size = x_size.fillna(method='ffill', axis=0).fillna(method='bfill', axis=0).astype(np.int64)
-    y_size = y_size.fillna(method='ffill', axis=1).fillna(method='bfill', axis=1).astype(np.int64)
+    for n in range(0, ncols):
+        y_size.iloc[1:, n] = int(round(y_size.iloc[1:, n].mean()))
+
+    for n in range(0, nrows):
+        x_size.iloc[n, 1:] = int(round(x_size.iloc[n, 1:].mean()))
 
     return id_df, x_size, y_size
 
