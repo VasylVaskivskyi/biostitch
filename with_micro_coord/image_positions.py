@@ -83,15 +83,21 @@ def get_positions_from_xml(tag_Images, main_channel) -> (list, list):
             x_pos.append(round(float(x_coord) / float(x_resol[:len(x_coord)-1]) ))  #convert to position in pixels by dividing on resolution in nm
             y_pos.append(round(float(y_coord) / float(y_resol[:len(y_coord)-1]) ))
 
-    return x_pos, y_pos
+    images_to_ignore = None
+    if 0 in x_pos:
+        zero_id = x_pos.index(0)
+        if y_pos[zero_id] == 0:
+            images_to_ignore = zero_id
+
+    return x_pos, y_pos, images_to_ignore
 
 
 def get_image_positions(tag_Images, main_channel):
     """specify path to read xml file
-    function finds metadata about image location and computes
-    relative location to central image."""
+    function finds metadata about image location, computes
+    relative location to central image, and size in pixels of each image"""
     # get microscope coordinates of images from xml file
-    x_pos, y_pos = get_positions_from_xml(tag_Images, main_channel)
+    x_pos, y_pos, images_to_ignore = get_positions_from_xml(tag_Images, main_channel)
 
     # find central field location in the list
     center_field_n = median_position(x_pos)  # x or y doesn't matter
@@ -111,6 +117,11 @@ def get_image_positions(tag_Images, main_channel):
         for j in relative_x:
             if i[1] == j[1]:  # if field id same
                 id_full_range.append( [j[0], i[0], j[1]] )  # x position, y position, field id
+
+    # remove id of image with (0,0) coordinates if there is any
+    for i in range(0, len(id_full_range)):
+        if id_full_range[i][2] == images_to_ignore:
+            del id_full_range[i]
 
     x_full_range = []
     y_full_range = []
@@ -133,11 +144,22 @@ def get_image_positions(tag_Images, main_channel):
     x_df = id_df.copy()
     y_df = id_df.copy()
 
-
     for i in range(0, len(id_full_range)):
         id_df.loc[id_full_range[i][1], id_full_range[i][0]] = id_full_range[i][2]
         x_df.loc[x_full_range[i][1], x_full_range[i][0]] = x_full_range[i][2]
         y_df.loc[y_full_range[i][1], y_full_range[i][0]] = y_full_range[i][2]
+
+    x_df = x_df.ffill(axis=0).bfill(axis=0)
+    y_df = y_df.ffill(axis=1).bfill(axis=1)
+
+    # remove columns and rows that have all na values
+    na_only_cols = x_df.columns[x_df.isna().all(axis=0)]
+    na_only_rows = y_df.index[y_df.isna().all(axis=1)]
+
+    if na_only_cols.empty is False or na_only_rows.empty is False:
+        id_df.drop(index=na_only_rows, columns=na_only_cols, inplace=True)
+        x_df.drop(index=na_only_rows, columns=na_only_cols, inplace=True)
+        y_df.drop(index=na_only_rows, columns=na_only_cols, inplace=True)
 
     id_df.fillna('zeros', inplace=True)
 
@@ -167,20 +189,18 @@ def get_image_sizes(tag_Images, main_channel):
             y_size.iloc[0, j] = y
         j += 1
 
-
-    # axis=0 because series don't have axis 1
+    # set size of first column and first row to the size of single picture
     x_size.iloc[:, 0] = int(round(x_size.iloc[:, 0].mean()))
     y_size.iloc[0, :] = int(round(y_size.iloc[0, :].mean()))
 
     # fill nan with mean values of cols and rows
-
     for n in range(1, ncols):
-        x_size.iloc[:, n] = x_df.iloc[:, n - 1].subtract(x_df.iloc[:, n])
-        #x_size.iloc[:, n] = int(round(x_size.iloc[:, n].mean()))
+        x_size.iloc[:, n] = abs(x_df.iloc[:, n - 1].subtract(x_df.iloc[:, n]))
+        x_size.iloc[:, n] = int(round(x_size.iloc[:, n].mean()))
 
     for n in range(1, nrows):
-        y_size.iloc[n, :] = y_df.iloc[n, :].subtract(y_df.iloc[n - 1, :])
-        #y_size.iloc[n, :] = int(round(y_size.iloc[n, :].mean()))
+        y_size.iloc[n, :] = abs(y_df.iloc[n, :].subtract(y_df.iloc[n - 1, :]))
+        y_size.iloc[n, :] = int(round(y_size.iloc[n, :].mean()))
 
     for n in range(0, ncols):
         y_size.iloc[1:, n] = int(round(y_size.iloc[1:, n].mean()))

@@ -3,6 +3,7 @@ import gc
 import numpy as np
 
 from datetime import datetime
+from command_line_args import arguments
 from image_positions import load_xml_tag_Images, get_image_sizes, get_image_paths_for_fields_per_channel, get_image_paths_for_planes_per_channel
 from preprocess_images import create_z_projection_for_initial_stitching, equalize_histograms
 from stitch_images import stitch_images, stitch_big_image
@@ -11,20 +12,29 @@ from stitch_images import stitch_images, stitch_big_image
 def main():
     st = datetime.now()
     print('started', st)
+
+    xml_path = arguments.xml
+    img_dir = arguments.img_dir
+    img_out_dir = arguments.out_dir
+    main_channel = arguments.main_channel
+
+
+    '''
     xml_path = 'C:/Users/vv3/Desktop/image/images/Hiplex_run1_cycle1_MsPos__2019-03-05T10_52_04-Measurement_2/Index.idx.xml'
     img_dir = 'C:/Users/vv3/Desktop/image/images/Hiplex_run1_cycle1_MsPos__2019-03-05T10_52_04-Measurement_2/Images/'
     img_out_dir = 'C:/Users/vv3/Desktop/image/stitched/'
     main_channel = 'DAPI'
-
+    '''
     tag_Images = load_xml_tag_Images(xml_path)
     fields_path_list = get_image_paths_for_fields_per_channel(img_dir, tag_Images)
     planes_path_list = get_image_paths_for_planes_per_channel(img_dir, tag_Images)
     ids, x_size, y_size = get_image_sizes(tag_Images, main_channel)
 
+    print('generating z-max preview')
     z_max_img_list = create_z_projection_for_initial_stitching(main_channel, fields_path_list)
     images = equalize_histograms(z_max_img_list)
     z_proj = stitch_images(images, ids, x_size, y_size)
-    tif.imwrite(img_out_dir + 'coord_test_1.tif', z_proj)
+    tif.imwrite(img_out_dir + 'preview.tif', z_proj)
 
     nrows,ncols = z_proj.shape
     n_planes = len(planes_path_list[main_channel])
@@ -44,12 +54,6 @@ def main():
     final_path = img_out_dir + 'stitching_result.tif'
     print('writing final image')
     tif.imwrite(final_path, final_image)
-
-    '''
-    tif.imwrite(img_out_dir + 'stitching_result.tif',
-                np.moveaxis(np.array([tif.imread(p) for p in paths], ndmin=4), 0,3)
-                )
-    '''
 
     fin = datetime.now()
     print('elapsed time', fin-st)
