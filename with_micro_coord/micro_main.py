@@ -3,9 +3,9 @@ import gc
 import numpy as np
 
 from datetime import datetime
-from with_micro_coord.image_positions import load_xml_tag_Images, get_image_sizes, get_image_paths_for_fields_per_channel, get_image_paths_for_planes_per_channel
-from with_micro_coord.preprocess_images import create_z_projection_for_initial_stitching, equalize_histograms
-from with_micro_coord.stitch_images import stitch_images, stitch_big_image
+from image_positions import load_xml_tag_Images, get_image_sizes, get_image_paths_for_fields_per_channel, get_image_paths_for_planes_per_channel
+from preprocess_images import create_z_projection_for_initial_stitching, equalize_histograms
+from stitch_images import stitch_images, stitch_big_image
 
 
 def main():
