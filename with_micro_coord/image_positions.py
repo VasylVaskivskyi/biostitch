@@ -1,6 +1,6 @@
 import xml.etree.ElementTree as ET
 import pandas as pd
-import numpy as np
+
 # ----------- Get relative position of images with respect to central image ----------
 def median_position(val_list) -> int:
     """find central image"""
@@ -79,9 +79,12 @@ def get_positions_from_xml(tag_Images, main_channel) -> (list, list):
         if img.find('ChannelName').text == main_channel and img.find('PlaneID').text == '1':
             x_coord = '{:.9f}'.format(float(img.find('PositionX').text))  # limit precision to nm
             y_coord = '{:.9f}'.format(float(img.find('PositionY').text))
-
-            x_pos.append(round(float(x_coord) / float(x_resol[:len(x_coord)-1]) ))  #convert to position in pixels by dividing on resolution in nm
-            y_pos.append(round(float(y_coord) / float(y_resol[:len(y_coord)-1]) ))
+            # we need to cut not round resolution because it is too precise and the values are getting skewed
+            cut_resol_x = len(x_coord.lstrip('-'))
+            cut_resol_y = len(y_coord.lstrip('-'))
+            # convert position to pixels by dividing on resolution in nm
+            x_pos.append(round(float(x_coord) / float(x_resol[:cut_resol_x]) ))
+            y_pos.append(round(float(y_coord) / float(y_resol[:cut_resol_y]) ))
 
     images_to_ignore = None
     if 0 in x_pos:

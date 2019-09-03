@@ -5,7 +5,7 @@ import numpy as np
 from datetime import datetime
 from command_line_args import arguments
 from image_positions import load_xml_tag_Images, get_image_sizes, get_image_paths_for_fields_per_channel, get_image_paths_for_planes_per_channel
-from preprocess_images import create_z_projection_for_initial_stitching, equalize_histograms
+from preprocess_images import create_z_projection_for_preview, equalize_histograms
 from stitch_images import stitch_images, stitch_big_image
 
 
@@ -20,6 +20,7 @@ def main():
 
 
     '''
+    xml_path = 'C:/Users/vv3/Desktop/Index.idx.xml'
     xml_path = 'C:/Users/vv3/Desktop/image/images/Hiplex_run1_cycle1_MsPos__2019-03-05T10_52_04-Measurement_2/Index.idx.xml'
     img_dir = 'C:/Users/vv3/Desktop/image/images/Hiplex_run1_cycle1_MsPos__2019-03-05T10_52_04-Measurement_2/Images/'
     img_out_dir = 'C:/Users/vv3/Desktop/image/stitched/'
@@ -31,10 +32,11 @@ def main():
     ids, x_size, y_size = get_image_sizes(tag_Images, main_channel)
 
     print('generating z-max preview')
-    z_max_img_list = create_z_projection_for_initial_stitching(main_channel, fields_path_list)
+    z_max_img_list = create_z_projection_for_preview(main_channel, fields_path_list)
     images = equalize_histograms(z_max_img_list)
     z_proj = stitch_images(images, ids, x_size, y_size)
     tif.imwrite(img_out_dir + 'preview.tif', z_proj)
+    print('preview is available at ' + img_out_dir + 'preview.tif')
 
     nrows,ncols = z_proj.shape
     n_planes = len(planes_path_list[main_channel])
