@@ -1,10 +1,12 @@
 import tifffile as tif
-import gc 
+import gc
 import numpy as np
-
-from apeer_ometiff_library.omexmlClass import OMEXML
 from datetime import datetime
+
+from aicsimageio.writers import ome_tiff_writer
+
 from command_line_args import arguments
+from ome_tags import create_ome_metadata
 from image_positions import load_xml_tag_Images, get_image_sizes, get_image_paths_for_fields_per_channel, get_image_paths_for_planes_per_channel
 from preprocess_images import create_z_projection_for_preview, equalize_histograms
 from stitch_images import stitch_images, stitch_big_image
@@ -52,41 +54,42 @@ def main():
 
     ncols = sum(x_size.iloc[0, :])
     nrows = sum(y_size.iloc[:, 0])
-    n_planes = len(planes_path_list[main_channel])
-    n_channels = len(planes_path_list.keys())
-    channel_names = planes_path_list.keys()
+    nplanes = len(planes_path_list[main_channel])
+    nchannels = len(planes_path_list.keys())
+    channel_names = list(planes_path_list.keys())
 
     if stitch_only != ['ALL']:
-        n_channels = len(stitch_only)
+        nchannels = len(stitch_only)
         channel_names = stitch_only
 
-    final_image = np.zeros((1, n_channels, n_planes, nrows, ncols), dtype=np.uint16)
+    final_path = img_out_dir + 'stitching_result.tif'
+    final_image = np.zeros((1, nchannels, nplanes, nrows, ncols), dtype=np.uint16)
 
-    o = OMEXML()
-    o.image().Name = 'stitching_result.tif'
-
-    ome = o.image().Pixels
-    ome.SizeX = ncols
-    ome.SizeY = nrows
-    ome.SizeZ = n_planes
-    ome.SizeC = n_channels
-    ome.SizeT = 1
-    ome.DimensionOrder = 'TCZXY'
-    ome.PixelType = 'uint16'
-
+    channels_meta = []
     c = 0
     for channel in channel_names:
-        final_image[0, c, :, :, :] = stitch_big_image(channel, planes_path_list, ids, x_size, y_size, img_out_dir)
+        print('\n\nprocessing channel no.{0}/{1} {2}'.format(c+1, nchannels, channel))
+        print('started at', datetime.now())
+
+        final_image[0,c,:, :, :] = stitch_big_image(channel, planes_path_list, ids, x_size, y_size, img_out_dir)
+        channels_meta.append({'ID': "Channel:0:" + str(c), 'Name': channel})
         c += 1
 
     del ids, x_size, y_size
     gc.collect()
-    final_path = img_out_dir + 'stitching_result.tif'
-    print('writing final image')
-    tif.imwrite(final_path, final_image, metadata={'axes':'TCZXY', 'ImageWidth':ncols, 'ImageLength':nrows}, description=o.to_xml())
+
+    ome = create_ome_metadata('stitching_result.tif', 'XYCZT', nchannels, 1, ncols, nrows, nplanes, 'uint16', channels_meta)
+    final_image = np.einsum('TCZYX -> TZCYX', final_image)
+
+    writer = ome_tiff_writer.OmeTiffWriter(final_path, overwrite_file=True)
+    writer.save(final_image, channel_names=channel_names, image_name='stitching_result.tif')
+    writer.close()
+
+    with open(img_out_dir + 'ome_meta.xml', 'w', encoding='utf-8') as f:
+        f.write(ome)
 
     fin = datetime.now()
-    print('elapsed time', fin-st)
+    print('\nelapsed time', fin-st)
 
 
 if __name__ == '__main__':
