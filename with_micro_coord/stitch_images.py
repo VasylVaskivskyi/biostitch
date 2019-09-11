@@ -4,6 +4,7 @@ from preprocess_images import read_images
 
 
 def cut_images(images, ids, x_sizes, y_sizes):
+    """read data from dataframes ids, x_size, y_size and cut images"""
     x_sizes = x_sizes.to_list()
     y_sizes = y_sizes.to_list()
     ids = ids.to_list()
@@ -24,6 +25,7 @@ def cut_images(images, ids, x_sizes, y_sizes):
 
 
 def stitch_images(images, ids, x_size, y_size):
+    """stitch cropped images"""
     nrows = ids.shape[0]
     res_h = []
     for row in range(0, nrows):
@@ -36,16 +38,16 @@ def stitch_images(images, ids, x_size, y_size):
 
 
 def stitch_plane(plane_paths, clahe, ids, x_size, y_size):
+    """do histogram normalization and stitch multiple images into one plane"""
     img_list = read_images(plane_paths, is_dir=False)
-    # correct uneven illumination
     images = list(map(clahe.apply, img_list))
     result_plane = stitch_images(images, ids, x_size, y_size)
     clahe.collectGarbage()
     return result_plane
 
 
-def stitch_big_image(channel, planes_path_list, ids, x_size, y_size, img_out_dir):
-    # write channel multilayer image to file
+def stitch_big_image(channel, planes_path_list, ids, x_size, y_size):
+    """stitch planes into one channel"""
     contrast_limit = 127
     grid_size = (41, 41)
     clahe = cv.createCLAHE(contrast_limit, grid_size)
@@ -61,6 +63,6 @@ def stitch_big_image(channel, planes_path_list, ids, x_size, y_size, img_out_dir
         print('{0}plane {1}/{2}'.format(delete, j+1, nplanes), end='', flush=True)
         result_channel[j, :, :] = stitch_plane(plane, clahe, ids, x_size, y_size)
         j += 1
-
+    print('\n')
     #tif.imwrite(img_out_dir + channel + '.tif', final_image)
     return result_channel
