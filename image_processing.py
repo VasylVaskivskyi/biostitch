@@ -1,5 +1,5 @@
 import os
-import tifffile as tif
+from mod_lib_tifffile import tifffile as tif
 import cv2 as cv
 import numpy as np
 from utilities import alphaNumOrder

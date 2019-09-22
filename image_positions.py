@@ -58,7 +58,7 @@ def load_xml_tag_Images(xml_path):
     with open(xml_path, 'r', encoding='utf-8') as f:
         xml_file = f.read()
         f.close()
-
+    # remove this tag to avoid dealing with tags like this {http://www.perkinelmer.com/PEHH/HarmonyV5}Image
     xml_file = xml_file.replace('xmlns="http://www.perkinelmer.com/PEHH/HarmonyV5"', '')
 
     xml = ET.fromstring(xml_file)
@@ -68,7 +68,19 @@ def load_xml_tag_Images(xml_path):
 
 def get_positions_from_xml(tag_Images, main_channel) -> (list, list):
     """read xml metadata and find image metadata (position, channel name) """
-
+    
+    magnification = tag_Images[0].find('ObjectiveMagnification').text
+    binning = tag_Images[0].find('BinningX').text
+    if magnification == '20' and binning == '1':
+        correction = 0.9871
+    elif magnification == '40' and binning == '2':
+        correction = 0.9971
+    elif magnification == '5' and binning == '2':
+        correction = 1
+    else:
+        print('There is no correction parameter available for this magnification and binning setup. Results may be inacurate.')
+        correction = 1
+    
     x_resol = '{:.20f}'.format(float(tag_Images[0].find('ImageResolutionX').text))
     y_resol = '{:.20f}'.format(float(tag_Images[0].find('ImageResolutionY').text))
 
@@ -79,12 +91,10 @@ def get_positions_from_xml(tag_Images, main_channel) -> (list, list):
         if img.find('ChannelName').text == main_channel and img.find('PlaneID').text == '1':
             x_coord = '{:.9f}'.format(float(img.find('PositionX').text))  # limit precision to nm
             y_coord = '{:.9f}'.format(float(img.find('PositionY').text))
-            # we need to cut not round resolution because it is too precise and the values are getting skewed
-            cut_resol_x = len(x_coord.lstrip('-'))
-            cut_resol_y = len(y_coord.lstrip('-'))
+
             # convert position to pixels by dividing on resolution in nm
-            x_pos.append(round(float(x_coord) / float(x_resol) )) # x_resol[:cut_resol_x]
-            y_pos.append(round(float(y_coord) / float(y_resol) ))
+            x_pos.append(round(float(x_coord) / float(x_resol) / correction)) # x_resol[:cut_resol_x]
+            y_pos.append(round(float(y_coord) / float(y_resol) / correction))
 
     images_to_ignore = None
     if 0 in x_pos:
@@ -204,13 +214,13 @@ def get_image_sizes(tag_Images, main_channel):
     for n in range(1, nrows):
         y_size.iloc[n, :] = abs(y_df.iloc[n, :].subtract(y_df.iloc[n - 1, :]))
         y_size.iloc[n, :] = int(round(y_size.iloc[n, :].mean()))
-
+    """
     for n in range(0, ncols):
         y_size.iloc[1:, n] = int(round(y_size.iloc[1:, n].mean()))
 
     for n in range(0, nrows):
         x_size.iloc[n, 1:] = int(round(x_size.iloc[n, 1:].mean()))
-
+    """
     return id_df, x_size, y_size
 
 # ----------- Get full path of each image im xml ----------

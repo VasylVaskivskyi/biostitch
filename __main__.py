@@ -29,7 +29,7 @@ def main():
                         help='will generate z-max projection of main_channel')
     parser.add_argument('--stitch_channels', type=str, nargs='+', default=['ALL'], help='specify space separated channel names to stitch (e.g. "DAPI" "ALEXA 657") default is to use all channels')
     parser.add_argument('--channels_to_correct_illumination', type=str, nargs='+', default=['ALL'], help='specify space separated channel names that require correction of bad illumination (e.g. "DAPI"), RNA spot channels usually do not need correction')
-    parser.add_argument('--mode', type=str, default='regular_channel', help='regular_channel: produce z-stacks, save by channel.\n regular_plane: produce z-stacks, save by palne.\n maxz: produce z-projections instead of z-stacks.')
+    parser.add_argument('--mode', type=str, default='regular_channel', help='regular_channel: produce z-stacks, save by channel.\nregular_plane: produce z-stacks, save by plane.\nmaxz: produce z-projections instead of z-stacks.')
     
 
     args = parser.parse_args()
