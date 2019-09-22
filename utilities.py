@@ -22,8 +22,3 @@ def alphaNumOrder(string):
 
 def t_show(img):
     cv.imshow('test', img), cv.waitKey()
-
-
-def z_project(img_stack):
-    max_projection = np.max(img_stack, axis=0)
-    return max_projection

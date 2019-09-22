@@ -21,7 +21,7 @@ def get_channel_metadata(tag_Images, channel_names):
                     'ContrastMethod="' + ch.find('ChannelType').text + '" ' +
                     'ExcitationWavelength="' + ch.find('MainExcitationWavelength').text + '" ' +
                     'EmissionWavelength="' + ch.find('MainEmissionWavelength').text + '" ' +
-                    'SamplesPerPixel="' + str(nchannels) + '">' +
+                    'SamplesPerPixel="1">' +
                     '<DetectorSettings Binning=' + binning + ' ID="Detector:0:0" />'
                     )
         new_ch = {ch_name: value}

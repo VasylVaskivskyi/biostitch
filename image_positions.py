@@ -83,8 +83,8 @@ def get_positions_from_xml(tag_Images, main_channel) -> (list, list):
             cut_resol_x = len(x_coord.lstrip('-'))
             cut_resol_y = len(y_coord.lstrip('-'))
             # convert position to pixels by dividing on resolution in nm
-            x_pos.append(round(float(x_coord) / float(x_resol[:cut_resol_x]) ))
-            y_pos.append(round(float(y_coord) / float(y_resol[:cut_resol_y]) ))
+            x_pos.append(round(float(x_coord) / float(x_resol) )) # x_resol[:cut_resol_x]
+            y_pos.append(round(float(y_coord) / float(y_resol) ))
 
     images_to_ignore = None
     if 0 in x_pos:
