@@ -2,19 +2,15 @@ import os
 from mod_lib_tifffile import tifffile as tif
 import cv2 as cv
 import numpy as np
-from utilities import alphaNumOrder
 import dask
 
 
-def equalize_histograms(img_list: list, contrast_limit: int = 127, grid_size: (int, int)= (41, 41)) -> list:
-    """ function for adaptive normalization of image histogram CLAHE """
-
-    clahe = cv.createCLAHE(contrast_limit, grid_size)
-    task = [dask.delayed(clahe.apply(img)) for img in img_list]
-    img_list = dask.compute(*task)
-    #img_list = list(map(clahe.apply, img_list))
-
-    return img_list
+def alphaNumOrder(string):
+    """ Returns all numbers on 5 digits to let sort the string with numeric order.
+    Ex: alphaNumOrder("a6b12.125")  ==> "a00006b00012.00125"
+    """
+    return ''.join([format(int(x), '05d') if x.isdigit()
+                   else x for x in re.split(r'(\d+)', string)])
 
 
 def read_images(path: [str, list], is_dir: bool) -> list:
@@ -37,6 +33,17 @@ def read_images(path: [str, list], is_dir: bool) -> list:
 
         else:
             img_list = tif.imread(path)
+
+    return img_list
+
+
+def equalize_histograms(img_list: list, contrast_limit: int = 127, grid_size: (int, int)= (41, 41)) -> list:
+    """ function for adaptive normalization of image histogram CLAHE """
+
+    clahe = cv.createCLAHE(contrast_limit, grid_size)
+    task = [dask.delayed(clahe.apply(img)) for img in img_list]
+    img_list = dask.compute(*task)
+    #img_list = list(map(clahe.apply, img_list))
 
     return img_list
 
@@ -70,8 +77,8 @@ def create_z_projection(channel_name, fields_path_list, ids, x_size, y_size, do_
 
 
 
-def cut_images(images, ids, x_sizes, y_sizes):
-    """read data from dataframes ids, x_size, y_size and cut images"""
+def crop_images(images, ids, x_sizes, y_sizes):
+    """read data from dataframe ids, series x_sizes and y_sizes and crop images"""
     x_sizes = x_sizes.to_list()
     y_sizes = y_sizes.to_list()
     ids = ids.to_list()
@@ -97,7 +104,7 @@ def stitch_images(images, ids, x_size, y_size):
     res_h = []
     for row in range(0, nrows):
         res_h.append(
-            np.concatenate(cut_images(images, ids.iloc[row, :], x_size.iloc[row, :], y_size.iloc[row, :]), axis=1))
+            np.concatenate(crop_images(images, ids.iloc[row, :], x_size.iloc[row, :], y_size.iloc[row, :]), axis=1))
 
     res = np.concatenate(res_h, axis=0)
 
