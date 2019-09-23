@@ -16,9 +16,9 @@ Current version allows to process image datasets that are bigger than memory by 
 
 **`--channels_to_correct_illumination`**  specify space separated channel names that require correction of bad illumination (e.g. "DAPI"), RNA spot channels usually do not need correction
 
-**`--mode`**  regular_channel: produce z-stacks, save by channel
-            regular_plane: produce z-stacks, save by plane
-            maxz: produce z-projections instead of z-stacks
+**`--mode`**  **regular_channel**: produce z-stacks, save by channel; 
+            **regular_plane**: produce z-stacks, save by plane; 
+            **maxz**: produce z-projections instead of z-stacks
             
 
 
