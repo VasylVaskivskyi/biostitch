@@ -1,5 +1,5 @@
 import os
-from mod_lib_tifffile import tifffile as tif
+import tifffile as tif
 import cv2 as cv
 import numpy as np
 import dask
@@ -14,7 +14,7 @@ def alphaNumOrder(string):
 
 
 def read_images(path: [str, list], is_dir: bool) -> list:
-    """read images in natural order (with respect to numbers)"""
+    """ Rread images in natural order (with respect to numbers) """
 
     allowed_extensions = ('tif', 'tiff')
 
@@ -38,7 +38,7 @@ def read_images(path: [str, list], is_dir: bool) -> list:
 
 
 def equalize_histograms(img_list: list, contrast_limit: int = 127, grid_size: (int, int)= (41, 41)) -> list:
-    """ function for adaptive normalization of image histogram CLAHE """
+    """ Function for adaptive normalization of image histogram CLAHE """
 
     clahe = cv.createCLAHE(contrast_limit, grid_size)
     task = [dask.delayed(clahe.apply(img)) for img in img_list]
@@ -49,12 +49,12 @@ def equalize_histograms(img_list: list, contrast_limit: int = 127, grid_size: (i
 
 
 def z_project(field):
-    """wrapper function to support multiprocessing"""
+    """ Wrapper function to support multiprocessing """
     return np.max(np.stack(read_images(field, is_dir=False), axis=0), axis=0)
 
 
 def create_z_projection_for_fov(channel_name: str, path_list: dict) -> list:
-    """ read images, convert them into stack, get max z-projection"""
+    """ Read images, convert them into stack, get max z-projection"""
     channel = path_list[channel_name]
     task = [dask.delayed(z_project(field)) for field in channel]
     z_max_img_list = dask.compute(*task)
@@ -65,6 +65,7 @@ def create_z_projection_for_fov(channel_name: str, path_list: dict) -> list:
 
 
 def create_z_projection(channel_name, fields_path_list, ids, x_size, y_size, do_illum_cor):
+    """ Create max z projection for each field of view """
     z_max_img_list = create_z_projection_for_fov(channel_name, fields_path_list)
     
     if do_illum_cor == True:
@@ -77,7 +78,7 @@ def create_z_projection(channel_name, fields_path_list, ids, x_size, y_size, do_
 
 
 def crop_images(images, ids, x_sizes, y_sizes):
-    """read data from dataframe ids, series x_sizes and y_sizes and crop images"""
+    """ Read data from dataframe ids, series x_sizes and y_sizes and crop images """
     x_sizes = x_sizes.to_list()
     y_sizes = y_sizes.to_list()
     ids = ids.to_list()
@@ -97,7 +98,7 @@ def crop_images(images, ids, x_sizes, y_sizes):
 
 
 def stitch_images(images, ids, x_size, y_size):
-    """stitch cropped images"""
+    """ Stitch cropped images by concatenating them horizontally and vertically """
     nrows = ids.shape[0]
     res_h = []
     for row in range(0, nrows):
@@ -110,7 +111,7 @@ def stitch_images(images, ids, x_size, y_size):
 
 
 def stitch_plane(plane_paths, clahe, ids, x_size, y_size, do_illum_cor):
-    """do histogram normalization and stitch multiple images into one plane"""
+    """ Do histogram equalization and stitch multiple images into one plane """
     img_list = read_images(plane_paths, is_dir=False)
     if do_illum_cor == True:
         images = list(map(clahe.apply, img_list))
@@ -121,7 +122,7 @@ def stitch_plane(plane_paths, clahe, ids, x_size, y_size, do_illum_cor):
     return result_plane
 
 def stitch_plane2(plane_paths, clahe, ids, x_size, y_size, do_illum_cor):
-    """do histogram normalization and stitch multiple images into one plane"""
+    """ Do histogram normalization and stitch multiple images into one plane """
     img_list = read_images(plane_paths, is_dir=False)
     ncols = sum(x_size.iloc[0, :])
     nrows = sum(y_size.iloc[:, 0])
@@ -136,7 +137,7 @@ def stitch_plane2(plane_paths, clahe, ids, x_size, y_size, do_illum_cor):
 
 
 def stitch_series_of_planes(channel, planes_path_list, ids, x_size, y_size, do_illum_cor):
-    """stitch planes into one channel"""
+    """ Stitch planes into one channel """
     contrast_limit = 127
     grid_size = (41, 41)
     clahe = cv.createCLAHE(contrast_limit, grid_size)

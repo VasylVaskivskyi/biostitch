@@ -24,6 +24,4 @@ Current version allows to process image datasets that are bigger than memory by 
 
 ## Dependecies
 
-`numpy, pandas, imagecodecs-lite, opencv-contrib-python, dask`
-
-mod_lib_tifffile is modified version of package tifffile.py. This modified version restricts number of samples per pixels to 1. Such restrictions prevents rendering multichannel grayscale images as RGB or CMYK images, and so the OME metadata does not interfere with TIFF metadata.
+`numpy, pandas, imagecodecs-lite, tifffile, opencv-contrib-python, dask`

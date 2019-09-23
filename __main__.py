@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 
 import argparse
-from mod_lib_tifffile import tifffile as tif
-from mod_lib_tifffile import TiffWriter
+import tifffile as tif
+from tifffile import TiffWriter
 import gc
 import numpy as np
 from datetime import datetime
@@ -27,8 +27,8 @@ def main():
                         help='path to output directory')
     parser.add_argument('--make_preview', action='store_true', default=False,
                         help='will generate z-max projection of main_channel')
-    parser.add_argument('--stitch_channels', type=str, nargs='+', default=['ALL'], help='specify space separated channel names to stitch (e.g. "DAPI" "ALEXA 657") default is to use all channels')
-    parser.add_argument('--channels_to_correct_illumination', type=str, nargs='+', default=['ALL'], help='specify space separated channel names that require correction of bad illumination (e.g. "DAPI"), RNA spot channels usually do not need correction')
+    parser.add_argument('--stitch_channels', type=str, nargs='+', default=['all'], help='specify space separated channel names to stitch (e.g. "DAPI" "ALEXA 657") default is to use all channels. \nall: will stitch all channels.')
+    parser.add_argument('--channels_to_correct_illumination', type=str, nargs='+', default=['all'], help='specify space separated channel names that require correction of bad illumination (e.g. "DAPI"), RNA spot channels usually do not need correction.\nall: will apply correction to all channels. \nnone: will not apply to any.')
     parser.add_argument('--mode', type=str, default='regular_channel', help='regular_channel: produce z-stacks, save by channel.\nregular_plane: produce z-stacks, save by plane.\nmaxz: produce z-projections instead of z-stacks.')
     args = parser.parse_args()
 
@@ -69,9 +69,9 @@ def main():
     nchannels = len(planes_path_list.keys())
     channel_names = list(planes_path_list.keys())
     
-    if stitch_only_ch == ['ALL']:
+    if stitch_only_ch == ['all']:
         main_channel  = channel_names[0]
-    elif stitch_only_ch != ['ALL']:
+    elif stitch_only_ch != ['all']:
         # if user specified custom number of channels check if they are correct
         for i in stitch_only_ch:
             if i not in channel_names:
@@ -82,8 +82,10 @@ def main():
         nchannels = len(stitch_only_ch)
         channel_names = stitch_only_ch
     
-    if ill_cor_ch == ['ALL']:
+    if ill_cor_ch == ['all']:
         ill_cor_ch = channel_names
+    elif ill_cor_ch == ['none']:
+        ill_cor = []
     
     ids, x_size, y_size = get_image_sizes(tag_Images, main_channel)
 
