@@ -76,7 +76,6 @@ def create_z_projection(channel_name, fields_path_list, ids, x_size, y_size, do_
     return z_proj
 
 
-
 def crop_images(images, ids, x_sizes, y_sizes):
     """read data from dataframe ids, series x_sizes and y_sizes and crop images"""
     x_sizes = x_sizes.to_list()
@@ -95,7 +94,6 @@ def crop_images(images, ids, x_sizes, y_sizes):
         r_images.append(img)
         j += 1
     return r_images
-
 
 
 def stitch_images(images, ids, x_size, y_size):

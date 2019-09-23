@@ -54,16 +54,22 @@ def create_relative_position(array, center_field) -> list:
     full_range.extend(plus_sorted)
     return full_range
 
-def load_xml_tag_Images(xml_path):
+def load_necessary_xml_tags(xml_path):
+    """ xml tag Images contain information about image size, resolution, binning, position, wave lenght, objective information.
+        xml tag Name - experiment name.
+        xml tag MeasurementStartTime - image acqusition time.
+    """
     with open(xml_path, 'r', encoding='utf-8') as f:
         xml_file = f.read()
         f.close()
-    # remove this tag to avoid dealing with tags like this {http://www.perkinelmer.com/PEHH/HarmonyV5}Image
+    # remove this tag to avoid dealing with formatting like this {http://www.perkinelmer.com/PEHH/HarmonyV5}Image
     xml_file = xml_file.replace('xmlns="http://www.perkinelmer.com/PEHH/HarmonyV5"', '')
 
     xml = ET.fromstring(xml_file)
     tag_Images = xml.find('Images')
-    return tag_Images
+    tag_Name = xml.find('Plates').find('Plate').find('Name').text.replace(' ','_')
+    tag_MeasurementStartTime = xml.find('Plates').find('Plate').find('MeasurementStartTime').text
+    return tag_Images, tag_Name, tag_MeasurementStartTime
 
 
 def get_positions_from_xml(tag_Images, main_channel) -> (list, list):
@@ -190,17 +196,13 @@ def get_image_sizes(tag_Images, main_channel):
     x = int(tag_Images[0].find('ImageSizeX').text)
     y = int(tag_Images[0].find('ImageSizeY').text)
 
-    j = 0
-    for i in id_df.iloc[:, 0]:
-        if i != 'zeros':
+    for j, id in enumerate(id_df.iloc[:, 0]):
+        if id != 'zeros':
             x_size.iloc[j, 0] = x
-        j += 1
 
-    j = 0
-    for i in id_df.iloc[0, :]:
-        if i != 'zeros':
+    for j, id in  enumerate(id_df.iloc[0, :]):
+        if id != 'zeros':
             y_size.iloc[0, j] = y
-        j += 1
 
     # set size of first column and first row to the size of single picture
     x_size.iloc[:, 0] = int(round(x_size.iloc[:, 0].mean()))
@@ -252,13 +254,11 @@ def get_target_per_channel_arrangement(tag_Images, target):
     # organize images into dictionary of a kind {channel_name: [list of images divided into planes]}
     # e.g. {'DAPI': [25 dataframes]}
     targets_per_channel = {}
-    c = 0
-    for channel in channel_list:
+    for c, channel in enumerate(channel_list):
         target_val_list = []
         for i in target_val:
             target_val_list.append(channel.loc[channel.loc[:, target + '_id'] == i, :])
         targets_per_channel.update({channel_names[c]: target_val_list})
-        c += 1
 
     return targets_per_channel
 

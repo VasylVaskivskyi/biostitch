@@ -30,7 +30,7 @@ def get_channel_metadata(tag_Images, channel_names):
     return channel_meta
 
 
-def create_ome_metadata(img_name, dim_order, X, Y, C, Z, T, dtype, channels_meta, tag_Images):
+def create_ome_metadata(tag_Name, dim_order, X, Y, C, Z, T, dtype, channels_meta, tag_Images, tag_MeasurementStartTime):
     imageid = str(uuid.uuid4())
     xml_start = '<?xml version="1.0" encoding="UTF-8"?>'
     header = '<OME xmlns="http://www.openmicroscopy.org/Schemas/OME/2016-06" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:str="http://exslt.org/strings" Creator="stitcher" UUID="urn:uuid:{0}" xsi:schemaLocation="http://www.openmicroscopy.org/Schemas/OME/2016-06 http://www.openmicroscopy.org/Schemas/OME/2016-06/ome.xsd">'.format(imageid)
@@ -39,9 +39,12 @@ def create_ome_metadata(img_name, dim_order, X, Y, C, Z, T, dtype, channels_meta
     NA = tag_Images[0].find('ObjectiveNA').text
     magnification = tag_Images[0].find('ObjectiveMagnification').text
     instrument = '<Instrument ID="Instrument:0"><Detector ID="Detector:0:0" Model="{0}" /><Objective ID="Objective:0"  LensNA="{1}"  NominalMagnification="{2}"/></Instrument>'.format(detector, NA, magnification)
-
-    image = '<Image ID="Image:0" Name="{0}">'.format(img_name)
-    pixels = '<Pixels DimensionOrder="{0}" ID="Pixels:0" SignificantBits="{7}" Interleaved="false" SizeC="{1}" SizeT="{2}" SizeX="{3}" SizeY="{4}" SizeZ="{5}" Type="{6}">'.format(dim_order, C, T, X, Y, Z, dtype, dtype.replace('uint' or 'int' or 'float', ''))
+    
+    image = '<Image ID="Image:0" Name="{0}"><AcquisitionDate>{1}</AcquisitionDate>'.format(tag_Name + '.tif', tag_MeasurementStartTime)
+    # multiply by million to convert from metre to um 
+    physical_size_x = X * float(tag_Images[0].find('ImageResolutionX').text) * 1e6 * int(tag_Images[0].find('BinningX').text)
+    physical_size_y = Y * float(tag_Images[0].find('ImageResolutionY').text) * 1e6 * int(tag_Images[0].find('BinningY').text)
+    pixels = '<Pixels DimensionOrder="{0}" ID="Pixels:0" SignificantBits="{7}" Interleaved="false" PhysicalSizeX="{8}" PhysicalSizeY="{9}" SizeC="{1}" SizeT="{2}" SizeX="{3}" SizeY="{4}" SizeZ="{5}" Type="{6}">'.format(dim_order, C, T, X, Y, Z, dtype, dtype.replace('uint' or 'int' or 'float', ''), physical_size_x, physical_size_y)
 
     channel = ''
     plane = ''
@@ -50,7 +53,7 @@ def create_ome_metadata(img_name, dim_order, X, Y, C, Z, T, dtype, channels_meta
         for i, c in enumerate(channels_meta):
             channel += '{0}</Channel>'.format(channels_meta[c])
             for p in range(0,Z):
-                plane += '<TiffData FirstC="{0}" FirstT="{1}" FirstZ="{2}" IFD="{3}" PlaneCount="1"></TiffData>'.format(i, t, p, IFD)  # using t+1, i+1 because they start from 0
+                plane += '<TiffData FirstC="{0}" FirstT="{1}" FirstZ="{2}" IFD="{3}" PlaneCount="1"></TiffData>'.format(i, t, p, IFD)  
                 IFD += 1
 
     footer = '</Pixels></Image></OME>'

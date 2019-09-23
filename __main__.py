@@ -11,7 +11,7 @@ import os
 import cv2 as cv 
 
 from ome_tags import create_ome_metadata, get_channel_metadata
-from image_positions import load_xml_tag_Images, get_image_sizes, get_image_paths_for_fields_per_channel, get_image_paths_for_planes_per_channel
+from image_positions import load_necessary_xml_tags, get_image_sizes, get_image_paths_for_fields_per_channel, get_image_paths_for_planes_per_channel
 from image_processing import create_z_projection, equalize_histograms, stitch_images, stitch_series_of_planes, stitch_plane2
 
 
@@ -30,12 +30,7 @@ def main():
     parser.add_argument('--stitch_channels', type=str, nargs='+', default=['ALL'], help='specify space separated channel names to stitch (e.g. "DAPI" "ALEXA 657") default is to use all channels')
     parser.add_argument('--channels_to_correct_illumination', type=str, nargs='+', default=['ALL'], help='specify space separated channel names that require correction of bad illumination (e.g. "DAPI"), RNA spot channels usually do not need correction')
     parser.add_argument('--mode', type=str, default='regular_channel', help='regular_channel: produce z-stacks, save by channel.\nregular_plane: produce z-stacks, save by plane.\nmaxz: produce z-projections instead of z-stacks.')
-    
-
     args = parser.parse_args()
-
-    st = datetime.now()
-    print('\nstarted', st)
 
     xml_path = args.xml
     img_dir = args.img_dir
@@ -58,13 +53,17 @@ def main():
     if not img_dir.endswith('/'):
         img_dir = img_dir + '/'
     
+    st = datetime.now()
+    print('\nstarted', st)
+
     '''
     xml_path = 'C:/Users/vv3/Desktop/image/images/Hiplex_run1_cycle1_MsPos__2019-03-05T10_52_04-Measurement_2/Index.idx.xml'
     img_dir = 'C:/Users/vv3/Desktop/image/images/Hiplex_run1_cycle1_MsPos__2019-03-05T10_52_04-Measurement_2/Images/'
     img_out_dir = 'C:/Users/vv3/Desktop/image/stitched/'
     main_channel = 'DAPI'
     '''
-    tag_Images = load_xml_tag_Images(xml_path)
+    
+    tag_Images, tag_Name, tag_MeasurementStartTime = load_necessary_xml_tags(xml_path)
     fields_path_list = get_image_paths_for_fields_per_channel(img_dir, tag_Images)
     planes_path_list = get_image_paths_for_planes_per_channel(img_dir, tag_Images)
     nchannels = len(planes_path_list.keys())
@@ -106,10 +105,11 @@ def main():
     final_meta = dict()
     for i, channel in enumerate(channel_names):
         final_meta[channel] = channels_meta[channel].replace('Channel', 'Channel ID="Channel:0:' + str(i) + '"')
-    ome = create_ome_metadata('stitching_result.tif', 'XYCZT', ncols, nrows, nchannels, nplanes, 1, 'uint16', final_meta, tag_Images)
+    ome = create_ome_metadata(tag_Name, 'XYCZT', ncols, nrows, nchannels, nplanes, 1, 'uint16', final_meta, tag_Images, tag_MeasurementStartTime)
+    ome_zmax = create_ome_metadata(tag_Name, 'XYCZT', ncols, nrows, nchannels, 1, 1, 'uint16', final_meta, tag_Images, tag_MeasurementStartTime) 
     
     if stitching_mode == 'regular_channel':
-        final_path_reg = img_out_dir + 'regular_stitching_result.tif'
+        final_path_reg = img_out_dir + tag_Name + '.tif'
         with TiffWriter(final_path_reg, bigtiff=True) as TW:
             for i, channel in enumerate(channel_names):
                 print('\nprocessing channel no.{0}/{1} {2}'.format(i+1, nchannels, channel))
@@ -120,10 +120,10 @@ def main():
                 else:
                     do_illum_cor = False
                                
-                TW.save(stitch_series_of_planes(channel, planes_path_list, ids, x_size, y_size, do_illum_cor), photometric='minisblack',contiguous=True, description = ome)
+                TW.save(stitch_series_of_planes(channel, planes_path_list, ids, x_size, y_size, do_illum_cor), photometric='minisblack', contiguous=True, description=ome)
     
     elif stitching_mode == 'regular_plane':
-        final_path_reg = img_out_dir + 'plane_stitching_result.tif'
+        final_path_reg = img_out_dir + tag_Name + '.tif'
         delete = '\b'*20
         contrast_limit = 127
         grid_size = (41, 41)
@@ -139,11 +139,10 @@ def main():
                     
                 for j, plane in enumerate(planes_path_list[channel]):
                     print('{0}plane {1}/{2}'.format(delete, j+1, nplanes), end='', flush=True)
-                    TW.save(stitch_plane2(plane, clahe, ids, x_size, y_size, do_illum_cor), photometric='minisblack',contiguous=True, description = ome)
+                    TW.save(stitch_plane2(plane, clahe, ids, x_size, y_size, do_illum_cor), photometric='minisblack', contiguous=True, description=ome)
                 
     elif stitching_mode == 'zmax':
-        final_path_zmax = img_out_dir + 'zmax_stitching_result.tif'
-        ome_zmax = create_ome_metadata('stitching_result.tif', 'XYCZT', ncols, nrows, nchannels, 1, 1, 'uint16', final_meta, tag_Images) 
+        final_path_zmax = img_out_dir + 'zmax_' + tag_Name + '.tif'
         with TiffWriter(final_path_zmax, bigtiff=True) as TW:
             for i, channel in enumerate(channel_names):
                 print('\nprocessing channel no.{0}/{1} {2}'.format(i+1, nchannels, channel))
@@ -154,7 +153,7 @@ def main():
                 else:
                     do_illum_cor = False
                 
-                TW.save(create_z_projection(channel, fields_path_list, ids, x_size, y_size, do_illum_cor), photometric='minisblack',contiguous=True, description = ome)
+                TW.save(create_z_projection(channel, fields_path_list, ids, x_size, y_size, do_illum_cor), photometric='minisblack',contiguous=True, description=ome)
                 
 
 
