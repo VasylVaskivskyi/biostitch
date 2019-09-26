@@ -108,7 +108,7 @@ def main():
     for i, channel in enumerate(channel_names):
         final_meta[channel] = channels_meta[channel].replace('Channel', 'Channel ID="Channel:0:' + str(i) + '"')
     ome = create_ome_metadata(tag_Name, 'XYCZT', ncols, nrows, nchannels, nplanes, 1, 'uint16', final_meta, tag_Images, tag_MeasurementStartTime)
-    ome_zmax = create_ome_metadata(tag_Name, 'XYCZT', ncols, nrows, nchannels, 1, 1, 'uint16', final_meta, tag_Images, tag_MeasurementStartTime) 
+    ome_maxz = create_ome_metadata(tag_Name, 'XYCZT', ncols, nrows, nchannels, 1, 1, 'uint16', final_meta, tag_Images, tag_MeasurementStartTime) 
     
     if stitching_mode == 'regular_channel':
         final_path_reg = img_out_dir + tag_Name + '.tif'
@@ -143,9 +143,9 @@ def main():
                     print('{0}plane {1}/{2}'.format(delete, j+1, nplanes), end='', flush=True)
                     TW.save(stitch_plane2(plane, clahe, ids, x_size, y_size, do_illum_cor), photometric='minisblack', contiguous=True, description=ome)
                 
-    elif stitching_mode == 'zmax':
-        final_path_zmax = img_out_dir + 'zmax_' + tag_Name + '.tif'
-        with TiffWriter(final_path_zmax, bigtiff=True) as TW:
+    elif stitching_mode == 'maxz':
+        final_path_maxz = img_out_dir + 'maxz_' + tag_Name + '.tif'
+        with TiffWriter(final_path_maxz, bigtiff=True) as TW:
             for i, channel in enumerate(channel_names):
                 print('\nprocessing channel no.{0}/{1} {2}'.format(i+1, nchannels, channel))
                 print('started at', datetime.now())
@@ -155,15 +155,17 @@ def main():
                 else:
                     do_illum_cor = False
                 
-                TW.save(create_z_projection(channel, fields_path_list, ids, x_size, y_size, do_illum_cor), photometric='minisblack',contiguous=True, description=ome)
+                TW.save(create_z_projection(channel, fields_path_list, ids, x_size, y_size, do_illum_cor), photometric='minisblack',contiguous=True, description=ome_maxz)
                 
-
 
     del ids, x_size, y_size, channels_meta
     gc.collect()
     
     with open(img_out_dir + 'ome_meta.xml', 'w', encoding='utf-8') as f:
-        f.write(ome)
+        if stitching_mode == 'regular_plane' or stitching_mode == 'regular_channel':
+            f.write(ome)
+        if stitching_mode == 'maxz':
+            f.write(ome_maxz)
     
 
     fin = datetime.now()
