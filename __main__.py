@@ -11,8 +11,9 @@ import os
 import cv2 as cv 
 
 from ome_tags import create_ome_metadata, get_channel_metadata
+from adaptive_estimation import AdaptiveShiftEstimation
 from image_positions import load_necessary_xml_tags, get_image_sizes, get_image_paths_for_fields_per_channel, get_image_paths_for_planes_per_channel
-from image_processing import create_z_projection, equalize_histograms, stitch_images, stitch_series_of_planes, stitch_plane2
+from image_processing import create_z_projection, create_z_projection_for_fov, equalize_histograms, stitch_images, stitch_series_of_planes, stitch_plane2
 
 
 def main():
@@ -88,6 +89,8 @@ def main():
         ill_cor = []
     
     ids, x_size, y_size = get_image_sizes(tag_Images, main_channel)
+    z_max_img_list = create_z_projection_for_fov(main_channel, fields_path_list)
+    x_size, y_size = AdaptiveShiftEstimation().estimate_image_sizes(z_max_img_list, ids, 0.1, 0.1)
 
     ncols = sum(x_size.iloc[0, :])
     nrows = sum(y_size.iloc[:, 0])
