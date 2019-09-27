@@ -28,9 +28,17 @@ def main():
                         help='path to output directory')
     parser.add_argument('--make_preview', action='store_true', default=False,
                         help='will generate z-max projection of main_channel')
-    parser.add_argument('--stitch_channels', type=str, nargs='+', default=['all'], help='specify space separated channel names to stitch (e.g. "DAPI" "ALEXA 657") default is to use all channels. \nall: will stitch all channels.')
-    parser.add_argument('--channels_to_correct_illumination', type=str, nargs='+', default=['all'], help='specify space separated channel names that require correction of bad illumination (e.g. "DAPI"), RNA spot channels usually do not need correction.\nall: will apply correction to all channels. \nnone: will not apply to any.')
-    parser.add_argument('--mode', type=str, default='regular_channel', help='regular_channel: produce z-stacks, save by channel.\nregular_plane: produce z-stacks, save by plane.\nmaxz: produce z-projections instead of z-stacks.')
+    parser.add_argument('--stitch_channels', type=str, nargs='+', default=['all'], 
+                        help='specify space separated channel names to stitch (e.g. "DAPI" "ALEXA 657"); \nall: will stitch all channels. Default to stitch all channels')
+    parser.add_argument('--channels_to_correct_illumination', type=str, nargs='+', default=['all'], 
+                        help='specify space separated channel names that require correction of bad illumination (e.g. "DAPI"), RNA spot channels usually do not need correction.\nall: will apply correction to all channels. \nnone: will not apply to any.')
+    parser.add_argument('--mode', type=str, default='regular_channel', 
+                        help='regular_channel: produce z-stacks, save by channel.\nregular_plane: produce z-stacks, save by plane.\nmaxz: produce z-projections instead of z-stacks.')
+    parser.add_argument('--adaptive', action='store_true',
+                        help='turn on adaptive estimation of image translation')
+    parser.add_argument('--overlap', type=float, nargs='+', default=[0.1, 0.1],
+                        help='approximate overlap of images in fractions of 1. Default overalp horizontal 0.1, vertical 0.1')
+                                  
     args = parser.parse_args()
 
     xml_path = args.xml
@@ -40,6 +48,8 @@ def main():
     stitch_only_ch = args.stitch_channels
     ill_cor_ch = args.channels_to_correct_illumination
     stitching_mode = args.mode
+    is_adaptive = args.adaptive
+    overlap = args.overlap
 
     # check if specified directories exist
     if not os.path.isdir(img_dir):
@@ -89,8 +99,10 @@ def main():
         ill_cor = []
     
     ids, x_size, y_size = get_image_sizes(tag_Images, main_channel)
-    z_max_img_list = create_z_projection_for_fov(main_channel, fields_path_list)
-    x_size, y_size = AdaptiveShiftEstimation().estimate_image_sizes(z_max_img_list, ids, 0.1, 0.1)
+    if is_adaptive:
+        print('estimating image translation')
+        z_max_img_list = create_z_projection_for_fov(main_channel, fields_path_list)
+        x_size, y_size = AdaptiveShiftEstimation().estimate_image_sizes(z_max_img_list, ids, overlap[0], overlap[1])
 
     ncols = sum(x_size.iloc[0, :])
     nrows = sum(y_size.iloc[:, 0])
