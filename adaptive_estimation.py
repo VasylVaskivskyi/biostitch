@@ -17,8 +17,8 @@ class AdaptiveShiftEstimation:
         self.__vertical_overlap = int(images[0].shape[0] * vertical_overlap_percent)
         self.__default_image_shape = images[0].shape
         x_size = self.find_translation_x(images, ids)
-        image_rows = self.stitch_images_x(images, ids, x_size)
-        y_size = self.find_translation_y(image_rows, x_size)
+        #image_rows = self.stitch_images_x(images, ids, x_size)
+        y_size = self.find_translation_y(images, ids)
         return x_size, y_size
 
     def find_translation_hor(self, left, right, overlap):
@@ -52,6 +52,13 @@ class AdaptiveShiftEstimation:
         diff = abs(x_size - _mean)
         x_size[diff > _std] = np.nan
         return x_size
+
+    def normalize_by_rows(self, y_size):
+        _std = y_size.std(axis=1).mean()  # std of all table
+        _mean = y_size.mean(axis=1).mean()  # column mean
+        diff = abs(y_size - _mean)
+        y_size[diff > _std] = np.nan
+        return y_size
 
 
     def find_translation_x(self, images, ids):
@@ -106,7 +113,38 @@ class AdaptiveShiftEstimation:
         shift = overlap - shift[0]
         return shift
 
+    def find_translation_col(self, images, col):
+        res = col.copy()
+        res[:] = np.nan
+        img_ids = list(col[col != 'zeros'])
+        img_locs = list(col[col != 'zeros'].index)
+        for i in range(0, len(img_ids)):
+            top = img_ids[i]
+            if i < len(img_ids) - 1:
+                bottom = img_ids[i + 1]
+                res[img_locs[i + 1]] = self.find_translation_ver(images[top], images[bottom], self.__vertical_overlap)
+            else:
+                return res
 
+        return res
+
+    def find_translation_y(self, images, ids):
+        y_size = ids.copy()
+        y_size.loc[:, :] = 0.0
+        nrows, ncols = y_size.shape
+
+        for i in range(0, ncols):
+            y_size.iloc[:,i] = self.find_translation_col(images, ids.iloc[:, i])
+        y_size = self.normalize_by_rows(y_size)
+        y_size = self.__default_image_shape[0] - y_size
+        y_size.iloc[0,:] = self.__default_image_shape[0]
+        row_means = list(y_size.mean(axis=1))
+
+        for i in range(0, nrows):
+            y_size.iloc[i,:] = round(row_means[i])
+
+        return y_size
+    """
     def find_translation_y(self, image_rows, x_size):
         y_size_li = []
 
@@ -123,7 +161,7 @@ class AdaptiveShiftEstimation:
             y_size.loc[row, :] = int(y_size_li[i])
 
         return y_size
-
+    """
 
     def stitch_reference_channel(self, image_rows, y_size):
 
