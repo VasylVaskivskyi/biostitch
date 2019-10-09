@@ -10,10 +10,10 @@ from datetime import datetime
 import os
 import cv2 as cv 
 
-from image_stitcher.ome_tags import create_ome_metadata, get_channel_metadata
-from image_stitcher.adaptive_estimation import AdaptiveShiftEstimation
-from image_stitcher.image_positions import load_necessary_xml_tags, get_image_sizes, get_image_paths_for_fields_per_channel, get_image_paths_for_planes_per_channel
-from image_stitcher.image_processing import create_z_projection, create_z_projection_for_fov, equalize_histograms, stitch_images, stitch_series_of_planes, stitch_plane2
+from ome_tags import create_ome_metadata, get_channel_metadata
+from adaptive_estimation import AdaptiveShiftEstimation
+from image_positions import load_necessary_xml_tags, get_image_sizes, get_image_paths_for_fields_per_channel, get_image_paths_for_planes_per_channel
+from image_processing import create_z_projection, create_z_projection_for_fov, stitch_series_of_planes, stitch_plane2
 
 
 def main():
