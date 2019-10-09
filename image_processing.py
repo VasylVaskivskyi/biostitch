@@ -64,7 +64,7 @@ def create_z_projection_for_fov(channel_name: str, path_list: dict) -> list:
     return z_max_img_list
 
 
-def create_z_projection(channel_name, fields_path_list, ids, x_size, y_size, do_illum_cor):
+def stitch_z_projection(channel_name, fields_path_list, ids, x_size, y_size, do_illum_cor):
     """ Create max z projection for each field of view """
     z_max_img_list = create_z_projection_for_fov(channel_name, fields_path_list)
     
