@@ -57,7 +57,7 @@ def create_relative_position(array, center_field) -> list:
 def load_necessary_xml_tags(xml_path):
     """ xml tag Images contain information about image size, resolution, binning, position, wave lenght, objective information.
         xml tag Name - experiment name.
-        xml tag MeasurementStartTime - image acqusition time.
+        xml tag MeasurementStartTime - image acquisition time.
     """
     with open(xml_path, 'r', encoding='utf-8') as f:
         xml_file = f.read()
