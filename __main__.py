@@ -96,7 +96,7 @@ def main():
     if ill_cor_ch == ['all']:
         ill_cor_ch = channel_names
     elif ill_cor_ch == ['none']:
-        ill_cor = []
+        ill_cor_ch = []
     
     ids, x_size, y_size = get_image_sizes(tag_Images, main_channel)
     if is_adaptive:

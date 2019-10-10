@@ -21,44 +21,14 @@ class AdaptiveShiftEstimation:
         return x_size, y_size
 
     def remove_outliers(self, df, axis):
-        # local version
-        # round values to int, so it is easier to find outliers
+        """ Compute score for all values in dataframe
+            and remove those values which have more than 1 std from median"""
         dataframe = df.round(0).copy()
-        cols = dataframe.columns
-        rows = dataframe.index
-        # for each column find what values have z-score > 1 (higher than 1 std from mean)
-        if axis == 0:
-            for i in cols:
-                # if there is only one non NA value in the column we don't need to search for outliers
-                if sum(pd.notna(dataframe.loc[:, i])) == 1:
-                    continue
-                else:
-                    _std = dataframe.loc[:, i].std(skipna=True)
-                    _mean = dataframe.loc[:, i].mean(skipna=True)
-                if pd.isna(_std) and pd.isna(_mean):
-                    dataframe.loc[:, i] = False
-                else:
-                    z_score = abs(dataframe.loc[:, i] - _mean) / (_std + 0.00001)
-                    dataframe.loc[z_score > 1, i] = False
-                    dataframe.loc[z_score <= 1, i] = True
-        # for each row find what values have z-score > 1 (higher than 1 std from mean)
-        elif axis == 1:
-            for i in rows:
-                # if there is only one non NA value in the row we don't need to search for outliers
-                if sum(pd.notna(dataframe.loc[i, :])) == 1:
-                    continue
-                else:
-                    _std = dataframe.loc[i, :].std(skipna=True)
-                    _mean = dataframe.loc[i, :].mean(skipna=True)
-                if pd.isna(_std) and pd.isna(_mean):
-                    dataframe.loc[i, :] = False
-                else:
-                    z_score = abs(dataframe.loc[i, :] - _mean) / (_std + 0.00001)
-                    dataframe.loc[i, z_score > 1] = False
-                    dataframe.loc[i, z_score <= 1] = True
-        # fill na with False and then subset input data to remove outliers
-        dataframe = dataframe.fillna(False)
-        return df[dataframe]
+        _std = dataframe.std(axis=axis, skipna=True, numeric_only=True).mean(skipna=True)  # mean std of all cols
+        _median = dataframe.median(axis=axis, skipna=True, numeric_only=True).mean(skipna=True)  # mean of column medians
+        score = abs(dataframe - _median) / (_std + 0.000001)  # prevent division by 0
+        df[score > 1] = np.nan
+        return df
 
     def find_pairwise_shift(self, img1, img2, overlap, mode):
         if mode == 'horizontal':
