@@ -27,17 +27,17 @@ def main():
     parser.add_argument('--out_dir', type=str, required=True,
                         help='path to output directory')
     parser.add_argument('--make_preview', action='store_true', default=False,
-                        help='will generate z-max projection of main_channel')
+                        help='will generate z-max projection of reference channel (typically first channel)')
     parser.add_argument('--stitch_channels', type=str, nargs='+', default=['all'], 
                         help='specify space separated channel names to stitch (e.g. "DAPI" "ALEXA 657"); \nall: will stitch all channels. Default to stitch all channels')
     parser.add_argument('--channels_to_correct_illumination', type=str, nargs='+', default=['all'], 
                         help='specify space separated channel names that require correction of bad illumination (e.g. "DAPI"), RNA spot channels usually do not need correction.\nall: will apply correction to all channels. \nnone: will not apply to any.')
     parser.add_argument('--mode', type=str, default='regular_channel', 
-                        help='regular_channel: produce z-stacks, save by channel.\nregular_plane: produce z-stacks, save by plane.\nmaxz: produce z-projections instead of z-stacks.')
+                        help='regular_channel: produce z-stacks, save by channel.\nregular_plane: produce z-stacks, save by plane.\nmaxz: produce max z-projections instead of z-stacks.')
     parser.add_argument('--adaptive', action='store_true',
                         help='turn on adaptive estimation of image translation')
     parser.add_argument('--overlap', type=float, nargs='+', default=[0.1, 0.1],
-                        help='approximate overlap of images in fractions of 1. Default overalp horizontal 0.1, vertical 0.1')
+                        help='two values that correspond to horizontal and vertical overlap of images in fractions of 1. Default overalp: horizontal 0.1, vertical 0.1')
                                   
     args = parser.parse_args()
 
