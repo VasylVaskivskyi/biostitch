@@ -25,7 +25,7 @@ class AdaptiveShiftEstimation:
             and remove those values which have more than 1 std from median"""
         dataframe = df.round(0).copy()
         _std = dataframe.std(axis=axis, skipna=True, numeric_only=True).mean(skipna=True)  # mean std of all cols
-        _median = dataframe.median(axis=axis, skipna=True, numeric_only=True).mean(skipna=True)  # mean of column medians
+        _median = dataframe.median(axis=axis, skipna=True, numeric_only=True).median(skipna=True)  # median of column medians
         score = abs(dataframe - _median) / (_std + 0.000001)  # prevent division by 0
         df[score > 1] = np.nan
         return df
