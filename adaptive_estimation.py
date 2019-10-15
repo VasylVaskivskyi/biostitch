@@ -87,7 +87,11 @@ class AdaptiveShiftEstimation:
         x_size = self.use_median(x_size, axis=0)
         x_size = self._default_image_shape[1] - x_size
         x_size.iloc[:, 0] = self._default_image_shape[1]
-
+        
+        col_means = list(x_size.mean(axis=0))
+        for i in range(0, ncols):
+            x_size.iloc[:, i] = int(round(col_means[i]))
+            
         x_size = x_size.astype(np.int64)
         return x_size
 
@@ -101,6 +105,10 @@ class AdaptiveShiftEstimation:
         y_size = self.use_median(y_size, axis=1)
         y_size = self._default_image_shape[0] - y_size
         y_size.iloc[0, :] = self._default_image_shape[0]
+        
+        row_means = list(y_size.mean(axis=1))
+        for i in range(0, nrows):
+            y_size.iloc[i, :] = int(round(row_means[i]))
 
         y_size = y_size.astype(np.int64)
         return y_size
