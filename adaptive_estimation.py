@@ -20,7 +20,7 @@ class AdaptiveShiftEstimation:
         y_size = self.find_translation_y(images, ids)
         return x_size, y_size
 
-     def use_median(self, df, axis):
+    def use_median(self, df, axis):
         """ Replace all values in rows or cols with respective medians"""
         dataframe = df.copy()
         if axis == 1:
