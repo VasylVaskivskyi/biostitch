@@ -20,15 +20,27 @@ class AdaptiveShiftEstimation:
         y_size = self.find_translation_y(images, ids)
         return x_size, y_size
 
-    def remove_outliers(self, df, axis):
-        """ Compute score for all values in dataframe
-            and remove those values which have more than 1 std from median"""
-        dataframe = df.round(0).copy()
-        _std = dataframe.std(axis=axis, skipna=True, numeric_only=True).mean(skipna=True)  # mean std of all cols
-        _median = dataframe.median(axis=axis, skipna=True, numeric_only=True).median(skipna=True)  # median of column medians
-        score = abs(dataframe - _median) / (_std + 0.000001)  # prevent division by 0
-        df[score > 1] = np.nan
-        return df
+     def use_median(self, df, axis):
+        """ Replace all values in rows or cols with respective medians"""
+        dataframe = df.copy()
+        if axis == 1:
+            nrows = len(dataframe.index)
+            row_medians = list(dataframe.median(axis=1, skipna=True))
+            for i in range(0, nrows):
+                if pd.isna(row_medians[i]):
+                    dataframe.iloc[i, :] = np.nan
+                else:
+                    dataframe.iloc[i, :] = int(round(row_medians[i]))
+        elif axis == 0:
+            ncols = len(dataframe.index)
+            col_medians = list(dataframe.median(axis=0, skipna=True))
+            for i in range(0, ncols):
+                if pd.isna(col_medians[i]):
+                    dataframe.iloc[i, :] = np.nan
+                else:
+                    dataframe.iloc[i, :] = int(round(col_medians[i]))
+
+        return dataframe
 
     def find_pairwise_shift(self, img1, img2, overlap, mode):
         if mode == 'horizontal':
@@ -72,14 +84,10 @@ class AdaptiveShiftEstimation:
 
         for i in range(0, nrows):
             x_size.iloc[i,:] = self.find_shift_series(images, ids.iloc[i, :], 'horizontal')
-        x_size = self.remove_outliers(x_size, axis=0)
+        x_size = self.use_median(x_size, axis=0)
         x_size = self._default_image_shape[1] - x_size
         x_size.iloc[:, 0] = self._default_image_shape[1]
 
-        col_means = list(x_size.mean(axis=0))
-
-        for i in range(0, ncols):
-            x_size.iloc[:,i] = int(round(col_means[i]))
         x_size = x_size.astype(np.int64)
         return x_size
 
@@ -90,13 +98,9 @@ class AdaptiveShiftEstimation:
 
         for i in range(0, ncols):
             y_size.iloc[:, i] = self.find_shift_series(images, ids.iloc[:, i], 'vertical')
-        y_size = self.remove_outliers(y_size, axis=1)
+        y_size = self.use_median(y_size, axis=1)
         y_size = self._default_image_shape[0] - y_size
         y_size.iloc[0, :] = self._default_image_shape[0]
 
-        row_means = list(y_size.mean(axis=1))
-
-        for i in range(0, nrows):
-            y_size.iloc[i,:] = int(round(row_means[i]))
         y_size = y_size.astype(np.int64)
         return y_size
