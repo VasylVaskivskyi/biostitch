@@ -45,6 +45,10 @@ If you want to correct uneven illumination in one of the channels you can specif
 This program developed and tested in the **conda** environment and some packages may fail to install correctly without it.
 
 **Installation example for conda**
+
 `conda create -n stitching python=3.7 numpy pandas dask`
+
 `source activate stitching`
+
 `pip install imagecodecs-lite tifffile opencv-contrib-python scikit-image`
+
