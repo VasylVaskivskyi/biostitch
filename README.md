@@ -30,7 +30,7 @@ Current version allows to process image datasets that are bigger than memory by 
 
 `python image_stitcher --xml "/path/to/dataset/Images/Index.idx.xml" --img_dir "/path/to/dataset/Images/" --out_dir "/path/to/out/directory/" --mode "maxz" --adaptive --overlap 0.1 0.1 --make_preview --stitch_channels "DAPI" "ALEXA 568" --channels_to_correct_illumination "DAPI"`
 
-You start with telling python to run the folder `image_stitcher`, then you have to specify paths where Index.idx.xml (`--xml`) and images (`--img_dir`) are stored. 
+You start with telling python to run the folder `image_stitcher`, then you have to specify paths where Index.idx.xml (`--xml`) and images (`--img_dir`) are stored, and (`--out_dir`) where you want to save the stitched image. If output directory does not exist it will be created. The output file will have the name from the xml file tag name.
 Then add name of the `--mode`**:** `maxz` will write maximum z-projections of every channel, `regular_channel` will be processing and writing image to the disk by channels, and `regular_plane` will be processing and writing image to disk by z-planes. 
 The flag `--adaptive` enables adaptive estimation of overlap between images, however when enabling in you have to specify **maximum percent of overlap** between images in the `--overlap` command **in fractions of 1**. The overlap in theory should not be a big value, typically 10-20 percent (0.1-0.2). 
 The flag `--make_preview` will allow to save max z-projection of the first channel which is usually a DAPI channel, to assess if stitching was successful or use later for registration. 

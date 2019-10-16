@@ -23,13 +23,13 @@ def main():
     parser.add_argument('--xml', type=str, required=True,
                         help='path to the xml file typically ../Images/Index.idx.xml')
     parser.add_argument('--img_dir', type=str, required=True,
-                        help='path to the directory with images')
+                        help='path to the directory with images.')
     parser.add_argument('--out_dir', type=str, required=True,
-                        help='path to output directory')
+                        help='path to output directory.')
     parser.add_argument('--make_preview', action='store_true', default=False,
-                        help='will generate z-max projection of reference channel (typically first channel)')
+                        help='will generate z-max projection of reference channel (typically first channel).')
     parser.add_argument('--stitch_channels', type=str, nargs='+', default=['all'], 
-                        help='specify space separated channel names to stitch (e.g. "DAPI" "ALEXA 657"); \nall: will stitch all channels. Default to stitch all channels')
+                        help='specify space separated channel names to stitch (e.g. "DAPI" "ALEXA 657"); \nall: will stitch all channels. Default to stitch all channels.')
     parser.add_argument('--channels_to_correct_illumination', type=str, nargs='+', default=['all'], 
                         help='specify space separated channel names that require correction of bad illumination (e.g. "DAPI"), RNA spot channels usually do not need correction.\nall: will apply correction to all channels. \nnone: will not apply to any.')
     parser.add_argument('--mode', type=str, default='regular_channel', 
@@ -37,7 +37,7 @@ def main():
     parser.add_argument('--adaptive', action='store_true',
                         help='turn on adaptive estimation of image translation')
     parser.add_argument('--overlap', type=float, nargs='+', default=[0.1, 0.1],
-                        help='two values that correspond to horizontal and vertical overlap of images in fractions of 1. Default overalp: horizontal 0.1, vertical 0.1')
+                        help='two values that correspond to horizontal and vertical overlap of images in fractions of 1. Default overalp: horizontal 0.1, vertical 0.1.')
                                   
     args = parser.parse_args()
 
@@ -54,10 +54,8 @@ def main():
     # check if specified directories exist
     if not os.path.isdir(img_dir):
         raise ValueError('img_dir do not exist')
-        exit(1)
     if not os.path.isdir(img_out_dir):
-        raise ValueError('img_out_dir do not exist')
-        exit(1)
+        os.mkdir(img_out_dir)
     
     if not img_out_dir.endswith('/'):
         img_out_dir = img_out_dir + '/'
@@ -87,8 +85,7 @@ def main():
         for i in stitch_only_ch:
             if i not in channel_names:
                 raise ValueError('There is no channel with name ' + i +  ' in the XML file')
-                exit(1)
-                
+
         main_channel = stitch_only_ch[0]
         nchannels = len(stitch_only_ch)
         channel_names = stitch_only_ch
@@ -118,7 +115,6 @@ def main():
         del z_proj
         gc.collect()
 
-    
     final_meta = dict()
     for i, channel in enumerate(channel_names):
         final_meta[channel] = channels_meta[channel].replace('Channel', 'Channel ID="Channel:0:' + str(i) + '"')
@@ -171,17 +167,12 @@ def main():
                     do_illum_cor = False
                 
                 TW.save(stitch_z_projection(channel, fields_path_list, ids, x_size, y_size, do_illum_cor), photometric='minisblack',contiguous=True, description=ome_maxz)
-                
 
-    del ids, x_size, y_size, channels_meta
-    gc.collect()
-    
     with open(img_out_dir + 'ome_meta.xml', 'w', encoding='utf-8') as f:
         if stitching_mode == 'regular_plane' or stitching_mode == 'regular_channel':
             f.write(ome)
         if stitching_mode == 'maxz':
             f.write(ome_maxz)
-    
 
     fin = datetime.now()
     print('\nelapsed time', fin-st)
