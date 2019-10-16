@@ -6,6 +6,7 @@ import tifffile as tif
 from tifffile import TiffWriter
 import gc
 import numpy as np
+import pandas as pd
 from datetime import datetime
 import os
 import cv2 as cv 
@@ -38,27 +39,32 @@ def main():
                         help='turn on adaptive estimation of image translation')
     parser.add_argument('--overlap', type=float, nargs='+', default=[0.1, 0.1],
                         help='two values that correspond to horizontal and vertical overlap of images in fractions of 1. Default overalp: horizontal 0.1, vertical 0.1.')
-                                  
+    parser.add_argument('--save_params', action='store_true', default=False,
+                        help='will save parameters estimated during stitching into 3 csv files (image_ids, x_sizes, y sizes)')
+    parser.add_argument('--load_params', type=str, default='none',
+                        help='specify folder that contais the following csv files: image_ids.csv, x_size.csv, y_sizes.csv, that contain previously estimated parameters')
     args = parser.parse_args()
 
     xml_path = args.xml
     img_dir = args.img_dir
-    img_out_dir = args.out_dir
+    out_dir = args.out_dir
     make_preview = args.make_preview
     stitch_only_ch = args.stitch_channels
     ill_cor_ch = args.channels_to_correct_illumination
     stitching_mode = args.mode
     is_adaptive = args.adaptive
     overlap = args.overlap
+    save_params = args.save_params
+    load_params = args.load_params
 
     # check if specified directories exist
     if not os.path.isdir(img_dir):
-        raise ValueError('img_dir do not exist')
-    if not os.path.isdir(img_out_dir):
-        os.mkdir(img_out_dir)
+        raise ValueError('img_dir does not exist')
+    if not os.path.isdir(out_dir):
+        os.mkdir(out_dir)
     
-    if not img_out_dir.endswith('/'):
-        img_out_dir = img_out_dir + '/'
+    if not out_dir.endswith('/'):
+        out_dir = out_dir + '/'
     if not img_dir.endswith('/'):
         img_dir = img_dir + '/'
     
@@ -68,7 +74,7 @@ def main():
     '''
     xml_path = 'C:/Users/vv3/Desktop/image/images/Hiplex_run1_cycle1_MsPos__2019-03-05T10_52_04-Measurement_2/Index.idx.xml'
     img_dir = 'C:/Users/vv3/Desktop/image/images/Hiplex_run1_cycle1_MsPos__2019-03-05T10_52_04-Measurement_2/Images/'
-    img_out_dir = 'C:/Users/vv3/Desktop/image/stitched/'
+    out_dir = 'C:/Users/vv3/Desktop/image/stitched/'
     main_channel = 'DAPI'
     '''
     
@@ -84,7 +90,7 @@ def main():
         # if user specified custom number of channels check if they are correct
         for i in stitch_only_ch:
             if i not in channel_names:
-                raise ValueError('There is no channel with name ' + i +  ' in the XML file')
+                raise ValueError('There is no channel with name ' + i + ' in the XML file')
 
         main_channel = stitch_only_ch[0]
         nchannels = len(stitch_only_ch)
@@ -94,12 +100,34 @@ def main():
         ill_cor_ch = channel_names
     elif ill_cor_ch == ['none']:
         ill_cor_ch = []
-    
-    ids, x_size, y_size = get_image_sizes(tag_Images, main_channel)
-    if is_adaptive:
-        print('estimating image translation')
-        z_max_img_list = create_z_projection_for_fov(main_channel, fields_path_list)
-        x_size, y_size = AdaptiveShiftEstimation().estimate_image_sizes(z_max_img_list, ids, overlap[0], overlap[1])
+
+    if load_params == ['none']:
+        ids, x_size, y_size = get_image_sizes(tag_Images, main_channel)
+        if is_adaptive:
+            print('estimating image translation')
+            z_max_img_list = create_z_projection_for_fov(main_channel, fields_path_list)
+            x_size, y_size = AdaptiveShiftEstimation().estimate_image_sizes(z_max_img_list, ids, overlap[0], overlap[1])
+    else:
+        print('using parameters from csv files')
+        if not load_params.endswith('/'):
+            load_params = load_params + '/'
+        ids = pd.read_csv(load_params + 'image_ids.csv', index_col=0, header='infer', dtype='object')
+        x_size = pd.read_csv(load_params + 'x_sizes.csv', index_col=0, header='infer', dtype='int64')
+        y_size = pd.read_csv(load_params + 'y_sizes.csv', index_col=0, header='infer', dtype='int64')
+        # convert column names to int
+        ids.columns = ids.columns.astype(int)
+        x_size.columns = x_size.columns.astype(int)
+        y_size.columns = y_size.columns.astype(int)
+        # convert data to int where possible
+        for j in ids.columns:
+            for i in ids.index:
+                val = ids.loc[i, j]
+                try:
+                    val = int(val)
+                    ids.loc[i, j] = val
+                except ValueError:
+                    pass
+        print(ids)
 
     ncols = sum(x_size.iloc[0, :])
     nrows = sum(y_size.iloc[:, 0])
@@ -110,8 +138,8 @@ def main():
     if make_preview:
         print('generating z-max preview')
         z_proj = stitch_z_projection(main_channel, fields_path_list, ids, x_size, y_size, True) 
-        tif.imwrite(img_out_dir + 'preview.tif', z_proj)
-        print('preview is available at ' + img_out_dir + 'preview.tif')
+        tif.imwrite(out_dir + 'preview.tif', z_proj)
+        print('preview is available at ' + out_dir + 'preview.tif')
         del z_proj
         gc.collect()
 
@@ -122,7 +150,7 @@ def main():
     ome_maxz = create_ome_metadata(tag_Name, 'XYCZT', ncols, nrows, nchannels, 1, 1, 'uint16', final_meta, tag_Images, tag_MeasurementStartTime) 
     
     if stitching_mode == 'regular_channel':
-        final_path_reg = img_out_dir + tag_Name + '.tif'
+        final_path_reg = out_dir + tag_Name + '.tif'
         with TiffWriter(final_path_reg, bigtiff=True) as TW:
             for i, channel in enumerate(channel_names):
                 print('\nprocessing channel no.{0}/{1} {2}'.format(i+1, nchannels, channel))
@@ -136,7 +164,7 @@ def main():
                 TW.save(stitch_series_of_planes(channel, planes_path_list, ids, x_size, y_size, do_illum_cor), photometric='minisblack', contiguous=True, description=ome)
     
     elif stitching_mode == 'regular_plane':
-        final_path_reg = img_out_dir + tag_Name + '.tif'
+        final_path_reg = out_dir + tag_Name + '.tif'
         delete = '\b'*20
         contrast_limit = 127
         grid_size = (41, 41)
@@ -155,7 +183,7 @@ def main():
                     TW.save(stitch_plane2(plane, clahe, ids, x_size, y_size, do_illum_cor), photometric='minisblack', contiguous=True, description=ome)
                 
     elif stitching_mode == 'maxz':
-        final_path_maxz = img_out_dir + 'maxz_' + tag_Name + '.tif'
+        final_path_maxz = out_dir + 'maxz_' + tag_Name + '.tif'
         with TiffWriter(final_path_maxz, bigtiff=True) as TW:
             for i, channel in enumerate(channel_names):
                 print('\nprocessing channel no.{0}/{1} {2}'.format(i+1, nchannels, channel))
@@ -168,11 +196,16 @@ def main():
                 
                 TW.save(stitch_z_projection(channel, fields_path_list, ids, x_size, y_size, do_illum_cor), photometric='minisblack',contiguous=True, description=ome_maxz)
 
-    with open(img_out_dir + 'ome_meta.xml', 'w', encoding='utf-8') as f:
+    with open(out_dir + 'ome_meta.xml', 'w', encoding='utf-8') as f:
         if stitching_mode == 'regular_plane' or stitching_mode == 'regular_channel':
             f.write(ome)
         if stitching_mode == 'maxz':
             f.write(ome_maxz)
+
+    if save_params:
+        ids.to_csv(out_dir + 'image_ids.csv')
+        x_size.to_csv(out_dir + 'x_sizes.csv')
+        y_size.to_csv(out_dir + 'y_sizes.csv')
 
     fin = datetime.now()
     print('\nelapsed time', fin-st)
