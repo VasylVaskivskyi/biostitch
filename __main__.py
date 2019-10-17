@@ -27,6 +27,8 @@ def main():
                         help='path to the directory with images.')
     parser.add_argument('--out_dir', type=str, required=True,
                         help='path to output directory.')
+    parser.add_argument('--reference_channel', type=str, default='none',
+                        help='select channel that will be used for estimating stitching parameters. Default is to use first channel.')
     parser.add_argument('--make_preview', action='store_true', default=False,
                         help='will generate z-max projection of reference channel (typically first channel).')
     parser.add_argument('--stitch_channels', type=str, nargs='+', default=['all'], 
@@ -48,6 +50,7 @@ def main():
     xml_path = args.xml
     img_dir = args.img_dir
     out_dir = args.out_dir
+    reference_channel = args.reference_channel
     make_preview = args.make_preview
     stitch_only_ch = args.stitch_channels
     ill_cor_ch = args.channels_to_correct_illumination
@@ -75,7 +78,7 @@ def main():
     xml_path = 'C:/Users/vv3/Desktop/image/images/Hiplex_run1_cycle1_MsPos__2019-03-05T10_52_04-Measurement_2/Index.idx.xml'
     img_dir = 'C:/Users/vv3/Desktop/image/images/Hiplex_run1_cycle1_MsPos__2019-03-05T10_52_04-Measurement_2/Images/'
     out_dir = 'C:/Users/vv3/Desktop/image/stitched/'
-    main_channel = 'DAPI'
+    reference_channel = 'DAPI'
     '''
     
     tag_Images, tag_Name, tag_MeasurementStartTime = load_necessary_xml_tags(xml_path)
@@ -85,14 +88,15 @@ def main():
     channel_names = list(planes_path_list.keys())
     
     if stitch_only_ch == ['all']:
-        main_channel = channel_names[0]
+        if reference_channel == 'none':
+            reference_channel = channel_names[0]
     elif stitch_only_ch != ['all']:
         # if user specified custom number of channels check if they are correct
         for i in stitch_only_ch:
             if i not in channel_names:
                 raise ValueError('There is no channel with name ' + i + ' in the XML file')
-
-        main_channel = stitch_only_ch[0]
+        if reference_channel == 'none':
+            reference_channel = stitch_only_ch[0]
         nchannels = len(stitch_only_ch)
         channel_names = stitch_only_ch
     
@@ -101,11 +105,11 @@ def main():
     elif ill_cor_ch == ['none']:
         ill_cor_ch = []
 
-    if load_params == ['none']:
-        ids, x_size, y_size = get_image_sizes(tag_Images, main_channel)
+    if load_params == 'none':
+        ids, x_size, y_size = get_image_sizes(tag_Images, reference_channel)
         if is_adaptive:
             print('estimating image translation')
-            z_max_img_list = create_z_projection_for_fov(main_channel, fields_path_list)
+            z_max_img_list = create_z_projection_for_fov(reference_channel, fields_path_list)
             x_size, y_size = AdaptiveShiftEstimation().estimate_image_sizes(z_max_img_list, ids, overlap[0], overlap[1])
     else:
         print('using parameters from csv files')
@@ -131,13 +135,13 @@ def main():
 
     ncols = sum(x_size.iloc[0, :])
     nrows = sum(y_size.iloc[:, 0])
-    nplanes = len(planes_path_list[main_channel])
+    nplanes = len(planes_path_list[reference_channel])
 
     channels_meta = get_channel_metadata(tag_Images, channel_names)
     
     if make_preview:
         print('generating z-max preview')
-        z_proj = stitch_z_projection(main_channel, fields_path_list, ids, x_size, y_size, True) 
+        z_proj = stitch_z_projection(reference_channel, fields_path_list, ids, x_size, y_size, True)
         tif.imwrite(out_dir + 'preview.tif', z_proj)
         print('preview is available at ' + out_dir + 'preview.tif')
         del z_proj

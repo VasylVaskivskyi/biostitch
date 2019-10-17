@@ -3,6 +3,7 @@ import tifffile as tif
 import cv2 as cv
 import numpy as np
 import dask
+import re
 
 
 def alphaNumOrder(string):
@@ -18,7 +19,7 @@ def read_images(path: [str, list], is_dir: bool) -> list:
 
     allowed_extensions = ('tif', 'tiff')
 
-    if is_dir == True:
+    if is_dir:
         file_list = [fn for fn in os.listdir(path) if fn.endswith(allowed_extensions)]
         file_list.sort(key=alphaNumOrder)
         task = [dask.delayed(path + fn) for fn in file_list]

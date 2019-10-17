@@ -12,6 +12,8 @@ Current version allows to process image datasets that are bigger than memory by 
 
 **`--out_dir`**   path to output directory.
 
+**`--reference_channel`**   select channel that will be used for estimating stitching parameters. Default is to use first channel.
+
 **`--stitch_channels`**   specify space separated channel names to stitch (e.g. "DAPI" "ALEXA 657"). Default is to use all channels.
 
 **`--channels_to_correct_illumination`**  specify space separated channel names that require correction of bad illumination (e.g. "DAPI"), RNA spot channels usually do not need correction. Default is to apply correction to all channels. Specify `none` if you do not want to do correction at all.
