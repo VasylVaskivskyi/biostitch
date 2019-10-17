@@ -63,8 +63,8 @@ def main():
     # check if specified directories exist
     if not os.path.isdir(img_dir):
         raise ValueError('img_dir does not exist')
-    if not os.path.isdir(out_dir):
-        os.mkdir(out_dir)
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir)
     
     if not out_dir.endswith('/'):
         out_dir = out_dir + '/'
@@ -126,13 +126,18 @@ def main():
         # convert data to int where possible
         for j in ids.columns:
             for i in ids.index:
-                val = ids.loc[i, j]
                 try:
+                    val = ids.loc[i, j]
                     val = int(val)
                     ids.loc[i, j] = val
                 except ValueError:
                     pass
         print(ids)
+
+    if save_params:
+        ids.to_csv(out_dir + 'image_ids.csv')
+        x_size.to_csv(out_dir + 'x_sizes.csv')
+        y_size.to_csv(out_dir + 'y_sizes.csv')
 
     ncols = sum(x_size.iloc[0, :])
     nrows = sum(y_size.iloc[:, 0])
@@ -208,11 +213,6 @@ def main():
             f.write(ome)
         if stitching_mode == 'maxz':
             f.write(ome_maxz)
-
-    if save_params:
-        ids.to_csv(out_dir + 'image_ids.csv')
-        x_size.to_csv(out_dir + 'x_sizes.csv')
-        y_size.to_csv(out_dir + 'y_sizes.csv')
 
     fin = datetime.now()
     print('\nelapsed time', fin-st)
