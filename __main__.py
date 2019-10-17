@@ -111,6 +111,7 @@ def main():
             print('estimating image translation')
             z_max_img_list = create_z_projection_for_fov(reference_channel, fields_path_list)
             x_size, y_size = AdaptiveShiftEstimation().estimate_image_sizes(z_max_img_list, ids, overlap[0], overlap[1])
+            del z_max_img_list
     else:
         print('using parameters from csv files')
         if not load_params.endswith('/'):
@@ -138,21 +139,23 @@ def main():
     nplanes = len(planes_path_list[reference_channel])
 
     channels_meta = get_channel_metadata(tag_Images, channel_names)
-    
-    if make_preview:
-        print('generating z-max preview')
-        z_proj = stitch_z_projection(reference_channel, fields_path_list, ids, x_size, y_size, True)
-        tif.imwrite(out_dir + 'preview.tif', z_proj)
-        print('preview is available at ' + out_dir + 'preview.tif')
-        del z_proj
-        gc.collect()
-
     final_meta = dict()
     for i, channel in enumerate(channel_names):
         final_meta[channel] = channels_meta[channel].replace('Channel', 'Channel ID="Channel:0:' + str(i) + '"')
     ome = create_ome_metadata(tag_Name, 'XYCZT', ncols, nrows, nchannels, nplanes, 1, 'uint16', final_meta, tag_Images, tag_MeasurementStartTime)
-    ome_maxz = create_ome_metadata(tag_Name, 'XYCZT', ncols, nrows, nchannels, 1, 1, 'uint16', final_meta, tag_Images, tag_MeasurementStartTime) 
-    
+    ome_maxz = create_ome_metadata(tag_Name, 'XYCZT', ncols, nrows, nchannels, 1, 1, 'uint16', final_meta, tag_Images, tag_MeasurementStartTime)
+
+    if make_preview:
+        print('generating max z preview')
+        z_proj = stitch_z_projection(reference_channel, fields_path_list, ids, x_size, y_size, True)
+        preview_meta = {reference_channel: final_meta[reference_channel]}
+        ome_preview = create_ome_metadata(tag_Name, 'XYCZT', ncols, nrows, 1, 1, 1,
+                                          'uint16', preview_meta, tag_Images, tag_MeasurementStartTime)
+        tif.imwrite(out_dir + 'preview.tif', z_proj, description=ome_preview)
+        print('preview is available at ' + out_dir + 'preview.tif')
+        del z_proj
+        gc.collect()
+
     if stitching_mode == 'regular_channel':
         final_path_reg = out_dir + tag_Name + '.tif'
         with TiffWriter(final_path_reg, bigtiff=True) as TW:

@@ -42,8 +42,8 @@ def create_ome_metadata(tag_Name, dim_order, X, Y, C, Z, T, dtype, channels_meta
     
     image = '<Image ID="Image:0" Name="{0}"><AcquisitionDate>{1}</AcquisitionDate>'.format(tag_Name + '.tif', tag_MeasurementStartTime)
     # multiply by million to convert from metre to um 
-    physical_size_x = X * float(tag_Images[0].find('ImageResolutionX').text) * 1e6 * int(tag_Images[0].find('BinningX').text)
-    physical_size_y = Y * float(tag_Images[0].find('ImageResolutionY').text) * 1e6 * int(tag_Images[0].find('BinningY').text)
+    physical_size_x = float(tag_Images[0].find('ImageResolutionX').text) * 1e6
+    physical_size_y = float(tag_Images[0].find('ImageResolutionY').text) * 1e6
     pixels = '<Pixels DimensionOrder="{0}" ID="Pixels:0" SignificantBits="{7}" Interleaved="false" PhysicalSizeX="{8}" PhysicalSizeY="{9}" SizeC="{1}" SizeT="{2}" SizeX="{3}" SizeY="{4}" SizeZ="{5}" Type="{6}">'.format(dim_order, C, T, X, Y, Z, dtype, dtype.replace('uint' or 'int' or 'float', ''), physical_size_x, physical_size_y)
 
     channel = ''
