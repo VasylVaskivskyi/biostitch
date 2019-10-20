@@ -1,7 +1,6 @@
 # Image stitcher for Opera Phenix HCS System 
 
-This script uses microscope coordinates from `Index.idx.xml` to stitch images.
-Current version allows to process image datasets that are bigger than memory by writing stitched images to the file every channel or every plane.
+This program uses microscope coordinates from `Index.idx.xml` to stitch images. There is also adaptive mode that improves stitching quality by using phase correlation based image registration. Current version allows to process image datasets that are bigger than memory by writing stitched images to the file every channel or every plane. You can stitch dataset of any size as long as you have enough physical memory and amount of RAM at least the size of a single stitched plane.
 
 ## Command line arguments:
 **`-h, --help`**    will print help.
