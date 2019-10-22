@@ -148,18 +148,20 @@ def main():
                 except ValueError:
                     pass
         print(ids)
-    """
+
     if save_params:
         if scan_mode == 'auto':
-            with open(out_dir + 'parameters.txt', 'w') as f:
-                f.write(parameters)
-                #separate ids form x_size and y_size
-                
+            with open(out_dir + 'image_ids.txt', 'w') as f:
+                f.write(ids)
+            with open(out_dir + 'x_sizes.txt', 'w') as f:
+                f.write(x_size)
+            with open(out_dir + 'y_sizes.txt', 'w') as f:
+                f.write(y_size)
         elif scan_mode == 'manual':
             ids.to_csv(out_dir + 'image_ids.csv')
             x_size.to_csv(out_dir + 'x_sizes.csv')
             y_size.to_csv(out_dir + 'y_sizes.csv')
-    """
+
     if scan_mode == 'auto':
         width = sum(x_size[0])
         height = sum(y_size)
