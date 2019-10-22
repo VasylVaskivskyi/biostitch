@@ -176,7 +176,7 @@ class AdaptiveShiftEstimation:
             image_rows.append(self.stitch_images_x_scan_auto(images, cur_row, x_size_cur))
             image_rows.append(self.stitch_images_x_scan_auto(images, next_row, x_size_next))
 
-            y_size_next = self.find_translation_y_scan_auto(image_rows)
+            y_size_next = int(round(self.find_translation_y_scan_auto(image_rows)))
             y_sizes.append(y_size_next)
 
             del image_rows[0]
