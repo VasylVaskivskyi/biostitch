@@ -1,4 +1,5 @@
 import xml.etree.ElementTree as ET
+import numpy as np
 import pandas as pd
 
 # ----------- Get relative position of images with respect to central image ----------
@@ -72,7 +73,7 @@ def load_necessary_xml_tags(xml_path):
     return tag_Images, tag_Name, tag_MeasurementStartTime
 
 
-def get_positions_from_xml(tag_Images, main_channel) -> (list, list):
+def get_positions_from_xml(tag_Images, main_channel):
     """read xml metadata and find image metadata (position, channel name) """
     
     magnification = tag_Images[0].find('ObjectiveMagnification').text
@@ -109,6 +110,29 @@ def get_positions_from_xml(tag_Images, main_channel) -> (list, list):
             images_to_ignore = zero_id
 
     return x_pos, y_pos, images_to_ignore
+
+
+def get_positions_from_xml_scan_mode_auto(tag_Images, main_channel):
+    """read xml metadata and find image metadata (position, channel name) """
+
+    x_resol = '{:.20f}'.format(float(tag_Images[0].find('ImageResolutionX').text))
+    y_resol = '{:.20f}'.format(float(tag_Images[0].find('ImageResolutionY').text))
+
+    x_pos = []
+    y_pos = []
+
+    img_pos = []
+    for img in tag_Images:
+        if img.find('ChannelName').text == main_channel and img.find('PlaneID').text == '1':
+            x_coord = '{:.9f}'.format(float(img.find('PositionX').text))  # limit precision to nm
+            y_coord = '{:.9f}'.format(float(img.find('PositionY').text))
+
+            # convert position to pixels by dividing on resolution in nm
+            x_pos.append(round(float(x_coord) / float(x_resol)))  # x_resol[:cut_resol_x]
+            y_pos.append(round(float(y_coord) / float(y_resol)))
+            img_pos.append( (round(float(x_coord) / float(x_resol)), round(float(y_coord) / float(y_resol)), img.find('FieldID').text) )
+
+    return x_pos, y_pos, img_pos
 
 
 def get_image_positions(tag_Images, main_channel):
@@ -231,7 +255,7 @@ def get_image_sizes_auto(tag_Images, main_channel):
     function finds metadata about image location, computes
     relative location to central image, and size in pixels of each image"""
     # get microscope coordinates of images from xml file
-    x_pos, y_pos, img_pos = get_positions_from_xml(tag_Images, main_channel)
+    x_pos, y_pos, img_pos = get_positions_from_xml_scan_mode_auto(tag_Images, main_channel)
     default_img_width = int(tag_Images[0].find('ImageSizeX').text)
     default_img_height = int(tag_Images[0].find('ImageSizeY').text)
 
@@ -375,7 +399,6 @@ def get_image_paths_for_planes_per_channel(img_dir, tag_Images):
     return channel_paths
 
 
-
 def get_image_paths_for_fields_per_channel(img_dir, tag_Images):
     channel_field_arr = get_target_per_channel_arrangement(tag_Images, target='field')
     channel_paths = {}
@@ -385,4 +408,3 @@ def get_image_paths_for_fields_per_channel(img_dir, tag_Images):
             field_paths.append([img_dir + fn for fn in field['file_name'].to_list()])
         channel_paths[channel] = field_paths
     return channel_paths
-

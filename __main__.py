@@ -177,7 +177,7 @@ def main():
 
     if make_preview:
         print('generating max z preview')
-        z_proj = stitch_z_projection(reference_channel, fields_path_list, ids, x_size, y_size, True)
+        z_proj = stitch_z_projection(reference_channel, fields_path_list, ids, x_size, y_size, True, scan_mode)
         preview_meta = {reference_channel: final_meta[reference_channel]}
         ome_preview = create_ome_metadata(tag_Name, 'XYCZT', width, height, 1, 1, 1,
                                           'uint16', preview_meta, tag_Images, tag_MeasurementStartTime)
@@ -198,7 +198,7 @@ def main():
                 else:
                     do_illum_cor = False
                                
-                TW.save(stitch_series_of_planes(channel, planes_path_list, ids, x_size, y_size, do_illum_cor), photometric='minisblack', contiguous=True, description=ome)
+                TW.save(stitch_series_of_planes(channel, planes_path_list, ids, x_size, y_size, do_illum_cor, scan_mode), photometric='minisblack', contiguous=True, description=ome)
     
     elif stitching_mode == 'regular_plane':
         final_path_reg = out_dir + tag_Name + '.tif'
@@ -217,7 +217,7 @@ def main():
                     
                 for j, plane in enumerate(planes_path_list[channel]):
                     print('{0}plane {1}/{2}'.format(delete, j+1, nplanes), end='', flush=True)
-                    TW.save(stitch_plane2(plane, clahe, ids, x_size, y_size, do_illum_cor), photometric='minisblack', contiguous=True, description=ome)
+                    TW.save(stitch_plane2(plane, clahe, ids, x_size, y_size, do_illum_cor, scan_mode), photometric='minisblack', contiguous=True, description=ome)
                 
     elif stitching_mode == 'maxz':
         final_path_maxz = out_dir + 'maxz_' + tag_Name + '.tif'
@@ -231,7 +231,7 @@ def main():
                 else:
                     do_illum_cor = False
                 
-                TW.save(stitch_z_projection(channel, fields_path_list, ids, x_size, y_size, do_illum_cor), photometric='minisblack',contiguous=True, description=ome_maxz)
+                TW.save(stitch_z_projection(channel, fields_path_list, ids, x_size, y_size, do_illum_cor, scan_mode), photometric='minisblack',contiguous=True, description=ome_maxz)
 
     with open(out_dir + 'ome_meta.xml', 'w', encoding='utf-8') as f:
         if stitching_mode == 'regular_plane' or stitching_mode == 'regular_channel':
