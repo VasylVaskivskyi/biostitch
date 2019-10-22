@@ -65,64 +65,89 @@ def create_z_projection_for_fov(channel_name: str, path_list: dict) -> list:
     return z_max_img_list
 
 
-def stitch_z_projection(channel_name, fields_path_list, ids, x_size, y_size, do_illum_cor):
+def stitch_z_projection(channel_name, fields_path_list, ids, x_size, y_size, do_illum_cor, scan_mode):
     """ Create max z projection for each field of view """
-    z_max_img_list = create_z_projection_for_fov(channel_name, fields_path_list)
+    z_max_fov_list = create_z_projection_for_fov(channel_name, fields_path_list)
     
-    if do_illum_cor == True:
-        images = equalize_histograms(z_max_img_list)
-        z_proj = stitch_images(images, ids, x_size, y_size)
+    if do_illum_cor:
+        z_max_fov_list = equalize_histograms(z_max_fov_list)
+        z_proj = stitch_images(z_max_fov_list, ids, x_size, y_size, scan_mode)
     else:
-        z_proj = stitch_images(z_max_img_list, ids, x_size, y_size)
+        z_proj = stitch_images(z_max_fov_list, ids, x_size, y_size, scan_mode)
     
     return z_proj
 
 
-def crop_images(images, ids, x_sizes, y_sizes):
+def crop_images_scan_manual(images, ids, x_sizes, y_sizes):
     """ Read data from dataframe ids, series x_sizes and y_sizes and crop images """
     x_sizes = x_sizes.to_list()
     y_sizes = y_sizes.to_list()
     ids = ids.to_list()
-    j = 0
+    default_img_shape = images[0].shape
     r_images = []
-    for i in ids:
-        if i == 'zeros':
+    for j, _id in enumerate(ids):
+        if _id == 'zeros':
             img = np.zeros((y_sizes[j], x_sizes[j]), dtype=np.uint16)
         else:
-            x_shift = images[i].shape[1] - x_sizes[j]
-            y_shift = images[i].shape[0] - y_sizes[j]
+            x_shift = default_img_shape[1] - x_sizes[j]
+            y_shift = default_img_shape[0] - y_sizes[j]
 
-            img = images[i][y_shift:, x_shift:]
+            img = images[_id][y_shift:, x_shift:]
         r_images.append(img)
-        j += 1
     return r_images
 
 
-def stitch_images(images, ids, x_size, y_size):
+def crop_images_scan_auto(images, ids, x_sizes, y_sizes):
+    default_img_shape = images[0].shape
+    r_images = []
+    for j, _id in enumerate(ids):
+        if _id == 'zeros':
+            img = np.zeros((y_sizes, x_sizes[j]), dtype=np.uint16)
+        else:
+            x_shift = default_img_shape[1] - x_sizes[j]
+            y_shift = default_img_shape[0] - y_sizes
+            img = images[_id][y_shift:, x_shift:]
+
+        r_images.append(img)
+
+    return r_images
+
+
+
+def stitch_images(images, ids, x_size, y_size, scan_mode):
     """ Stitch cropped images by concatenating them horizontally and vertically """
-    nrows = ids.shape[0]
-    res_h = []
-    for row in range(0, nrows):
-        res_h.append(
-            np.concatenate(crop_images(images, ids.iloc[row, :], x_size.iloc[row, :], y_size.iloc[row, :]), axis=1))
+    if scan_mode == 'auto':
+        nrows = len(ids)
+        res_h = []
+        for row in range(0, nrows):
+            res_h.append(
+                np.concatenate(crop_images_scan_auto(images, ids[row], x_size[row], y_size[row]), axis=1)
+            )
+    elif scan_mode == 'manual':
+        nrows = ids.shape[0]
+        res_h = []
+        for row in range(0, nrows):
+            res_h.append(
+                np.concatenate(crop_images_scan_manual(images, ids.iloc[row, :], x_size.iloc[row, :], y_size.iloc[row, :]), axis=1))
 
     res = np.concatenate(res_h, axis=0)
 
     return res
 
 
-def stitch_plane(plane_paths, clahe, ids, x_size, y_size, do_illum_cor):
+def stitch_plane(plane_paths, clahe, ids, x_size, y_size, do_illum_cor, scan_mode):
     """ Do histogram equalization and stitch multiple images into one plane """
     img_list = read_images(plane_paths, is_dir=False)
     if do_illum_cor == True:
         images = list(map(clahe.apply, img_list))
-        result_plane = stitch_images(images, ids, x_size, y_size)
+        result_plane = stitch_images(images, ids, x_size, y_size, scan_mode)
         clahe.collectGarbage()
     else:
-        result_plane = stitch_images(img_list, ids, x_size, y_size)
+        result_plane = stitch_images(img_list, ids, x_size, y_size, scan_mode)
     return result_plane
 
-def stitch_plane2(plane_paths, clahe, ids, x_size, y_size, do_illum_cor):
+
+def stitch_plane2(plane_paths, clahe, ids, x_size, y_size, do_illum_cor, scan_mode):
     """ Do histogram normalization and stitch multiple images into one plane """
     img_list = read_images(plane_paths, is_dir=False)
     ncols = sum(x_size.iloc[0, :])
@@ -130,14 +155,14 @@ def stitch_plane2(plane_paths, clahe, ids, x_size, y_size, do_illum_cor):
     result_plane = np.zeros((1, nrows,ncols), dtype=np.uint16)
     if do_illum_cor == True:
         images = list(map(clahe.apply, img_list))
-        result_plane[0,:,:] = stitch_images(images, ids, x_size, y_size)
+        result_plane[0, :, :] = stitch_images(images, ids, x_size, y_size, scan_mode)
         clahe.collectGarbage()
     else:
-        result_plane[0,:,:] = stitch_images(img_list, ids, x_size, y_size)
+        result_plane[0, :, :] = stitch_images(img_list, ids, x_size, y_size, scan_mode)
     return result_plane
 
 
-def stitch_series_of_planes(channel, planes_path_list, ids, x_size, y_size, do_illum_cor):
+def stitch_series_of_planes(channel, planes_path_list, ids, x_size, y_size, do_illum_cor, scan_mode):
     """ Stitch planes into one channel """
     contrast_limit = 127
     grid_size = (41, 41)
@@ -151,7 +176,7 @@ def stitch_series_of_planes(channel, planes_path_list, ids, x_size, y_size, do_i
     delete = '\b'*20
     for i, plane in enumerate(planes_path_list[channel]):
         print('{0}plane {1}/{2}'.format(delete, i+1, nplanes), end='', flush=True)
-        result_channel[i, :, :] = stitch_plane(plane, clahe, ids, x_size, y_size, do_illum_cor)
+        result_channel[i, :, :] = stitch_plane(plane, clahe, ids, x_size, y_size, do_illum_cor, scan_mode)
     print('\n')
     #tif.imwrite(img_out_dir + channel + '.tif', final_image)
     return result_channel

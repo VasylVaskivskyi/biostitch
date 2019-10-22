@@ -13,7 +13,7 @@ import cv2 as cv
 
 from ome_tags import create_ome_metadata, get_channel_metadata
 from adaptive_estimation import AdaptiveShiftEstimation
-from image_positions import load_necessary_xml_tags, get_image_sizes, get_image_paths_for_fields_per_channel, get_image_paths_for_planes_per_channel
+from image_positions import load_necessary_xml_tags, get_image_sizes_auto, get_image_sizes_manual, get_image_paths_for_fields_per_channel, get_image_paths_for_planes_per_channel
 from image_processing import stitch_z_projection, create_z_projection_for_fov, stitch_series_of_planes, stitch_plane2
 
 
@@ -45,6 +45,8 @@ def main():
                         help='will save parameters estimated during stitching into 3 csv files (image_ids, x_sizes, y sizes)')
     parser.add_argument('--load_params', type=str, default='none',
                         help='specify folder that contais the following csv files: image_ids.csv, x_size.csv, y_sizes.csv, that contain previously estimated parameters')
+    parser.add_argument('--scan_mode', type=str, default='none',
+                        help='specify scanning mode (auto or manual)')
     args = parser.parse_args()
 
     xml_path = args.xml
@@ -59,6 +61,7 @@ def main():
     overlap = args.overlap
     save_params = args.save_params
     load_params = args.load_params
+    scan_mode = args.scan_mode
 
     # check if specified directories exist
     if not os.path.isdir(img_dir):
@@ -106,11 +109,23 @@ def main():
         ill_cor_ch = []
 
     if load_params == 'none':
-        ids, x_size, y_size = get_image_sizes(tag_Images, reference_channel)
+        if scan_mode == 'auto':
+            img_sizes = get_image_sizes_auto(tag_Images, reference_channel)
+            parameters = img_sizes
+            ids = []
+            for row in img_sizes:
+                ids.append([i[2] for i in row])
+        elif scan_mode == 'manual':
+            ids, x_size, y_size = get_image_sizes_manual(tag_Images, reference_channel)
+            parameters = ids
+
         if is_adaptive:
             print('estimating image translation')
             z_max_img_list = create_z_projection_for_fov(reference_channel, fields_path_list)
-            x_size, y_size = AdaptiveShiftEstimation().estimate_image_sizes(z_max_img_list, ids, overlap[0], overlap[1])
+            estimator = AdaptiveShiftEstimation()
+            estimator.horizontal_overlap_percent = 0.1
+            estimator.vertical_overlap_percent = 0.1
+            x_size, y_size = estimator.estimate(z_max_img_list, parameters, scan_mode)
             del z_max_img_list
     else:
         print('using parameters from csv files')
@@ -133,28 +148,38 @@ def main():
                 except ValueError:
                     pass
         print(ids)
-
+    """
     if save_params:
-        ids.to_csv(out_dir + 'image_ids.csv')
-        x_size.to_csv(out_dir + 'x_sizes.csv')
-        y_size.to_csv(out_dir + 'y_sizes.csv')
-
-    ncols = sum(x_size.iloc[0, :])
-    nrows = sum(y_size.iloc[:, 0])
+        if scan_mode == 'auto':
+            with open(out_dir + 'parameters.txt', 'w') as f:
+                f.write(parameters)
+                #separate ids form x_size and y_size
+                
+        elif scan_mode == 'manual':
+            ids.to_csv(out_dir + 'image_ids.csv')
+            x_size.to_csv(out_dir + 'x_sizes.csv')
+            y_size.to_csv(out_dir + 'y_sizes.csv')
+    """
+    if scan_mode == 'auto':
+        width = sum(x_size[0])
+        height = sum(y_size)
+    elif scan_mode == 'manual':
+        width = sum(x_size.iloc[0, :])
+        height = sum(y_size.iloc[:, 0])
     nplanes = len(planes_path_list[reference_channel])
 
     channels_meta = get_channel_metadata(tag_Images, channel_names)
     final_meta = dict()
     for i, channel in enumerate(channel_names):
         final_meta[channel] = channels_meta[channel].replace('Channel', 'Channel ID="Channel:0:' + str(i) + '"')
-    ome = create_ome_metadata(tag_Name, 'XYCZT', ncols, nrows, nchannels, nplanes, 1, 'uint16', final_meta, tag_Images, tag_MeasurementStartTime)
-    ome_maxz = create_ome_metadata(tag_Name, 'XYCZT', ncols, nrows, nchannels, 1, 1, 'uint16', final_meta, tag_Images, tag_MeasurementStartTime)
+    ome = create_ome_metadata(tag_Name, 'XYCZT', width, height, nchannels, nplanes, 1, 'uint16', final_meta, tag_Images, tag_MeasurementStartTime)
+    ome_maxz = create_ome_metadata(tag_Name, 'XYCZT', width, height, nchannels, 1, 1, 'uint16', final_meta, tag_Images, tag_MeasurementStartTime)
 
     if make_preview:
         print('generating max z preview')
         z_proj = stitch_z_projection(reference_channel, fields_path_list, ids, x_size, y_size, True)
         preview_meta = {reference_channel: final_meta[reference_channel]}
-        ome_preview = create_ome_metadata(tag_Name, 'XYCZT', ncols, nrows, 1, 1, 1,
+        ome_preview = create_ome_metadata(tag_Name, 'XYCZT', width, height, 1, 1, 1,
                                           'uint16', preview_meta, tag_Images, tag_MeasurementStartTime)
         tif.imwrite(out_dir + 'preview.tif', z_proj, description=ome_preview)
         print('preview is available at ' + out_dir + 'preview.tif')
