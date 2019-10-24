@@ -1,12 +1,10 @@
 import uuid
 
 
-def get_channel_metadata(tag_Images, channel_names):
-    nchannels = len(channel_names)
-
+def get_channel_metadata(tag_Images, channel_ids):
     channel_meta = dict()
-    for i in range(0, nchannels):
-        ch = tag_Images[i]
+    for k, v in channel_ids.items():
+        ch = tag_Images[v]
         ch_name = ch.find('ChannelName').text
         binning = '"{0}x{1}"'.format(ch.find('BinningX').text, ch.find('BinningY').text)
         acquisition_mode = ch.find('AcquisitionType').text

@@ -89,7 +89,8 @@ def main():
     planes_path_list = get_image_paths_for_planes_per_channel(img_dir, tag_Images)
     nchannels = len(planes_path_list.keys())
     channel_names = list(planes_path_list.keys())
-    
+    channel_ids = {ch: i for i, ch in enumerate(channel_names)}
+
     if stitch_only_ch == ['all']:
         if reference_channel == 'none':
             reference_channel = channel_names[0]
@@ -102,7 +103,9 @@ def main():
             reference_channel = stitch_only_ch[0]
         nchannels = len(stitch_only_ch)
         channel_names = stitch_only_ch
-    
+
+    channel_ids = {k: v for k, v in channel_ids.items() if k in channel_names}
+
     if ill_cor_ch == ['all']:
         ill_cor_ch = channel_names
     elif ill_cor_ch == ['none']:
@@ -170,7 +173,7 @@ def main():
         height = sum(y_size.iloc[:, 0])
     nplanes = len(planes_path_list[reference_channel])
 
-    channels_meta = get_channel_metadata(tag_Images, channel_names)
+    channels_meta = get_channel_metadata(tag_Images, channel_ids)
     final_meta = dict()
     for i, channel in enumerate(channel_names):
         final_meta[channel] = channels_meta[channel].replace('Channel', 'Channel ID="Channel:0:' + str(i) + '"')
