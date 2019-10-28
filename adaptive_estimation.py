@@ -142,6 +142,16 @@ class AdaptiveShiftEstimation:
 
     def estimate_sizes_scan_auto(self, images, image_sizes):
         nrows = len(image_sizes)
+
+        # get maximum row width calculated from microscope coordinates
+        # it will serve as initial estimation of zero padding for the right side of the image
+        row_width = []
+        for row in image_sizes:
+            row_width.append(sum([i[0] for i in row]))
+        max_row_width = max(row_width)
+
+        # estimate row width and height
+        # each cycle reuses "next_row" from previous loop as current row
         x_sizes = []
         y_sizes = [self._default_image_shape[0]]
         image_rows = []
@@ -150,10 +160,8 @@ class AdaptiveShiftEstimation:
 
             if row == 0:
                 cur_row = [i[2] for i in image_sizes[0]]
-                cur_row_size_from_micro = [i[0] for i in image_sizes[row]]  # calculated from micro coordinates
-                x_size_cur = self.find_translation_x_scan_auto(images, cur_row, cur_row_size_from_micro)
-
-                diff = sum(cur_row_size_from_micro) - sum(x_size_cur)
+                x_size_cur = self.find_translation_x_scan_auto(images, cur_row, max_row_width)
+                diff = max_row_width - sum(x_size_cur)
                 if diff > 0:
                     x_size_cur[-1] += diff
 
@@ -165,12 +173,17 @@ class AdaptiveShiftEstimation:
                 x_size_cur = x_size_next.copy()  # reuse previous x_size_next as x_size_cur
 
             next_row = [i[2] for i in image_sizes[row + 1]]
-            next_row_size_from_micro = [i[0] for i in image_sizes[row + 1]]  # calculated from micro coordinates
+            x_size_next = self.find_translation_x_scan_auto(images, next_row, max_row_width)
 
-            x_size_next = self.find_translation_x_scan_auto(images, next_row, next_row_size_from_micro)
-            diff = sum(next_row_size_from_micro) - sum(x_size_next)
+            diff = max_row_width - sum(x_size_next)
             if diff > 0:
                 x_size_next[-1] += diff
+            elif diff < 0:
+                max_row_width = sum(x_size_next)
+                new_diff = abs(diff)
+                for x in x_sizes:
+                    x[-1] += new_diff
+
             x_sizes.append(x_size_next)
 
             image_rows.append(self.stitch_images_x_scan_auto(images, cur_row, x_size_cur))
