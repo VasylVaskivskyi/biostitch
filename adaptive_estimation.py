@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 from skimage.feature import register_translation
-
+from image_processing import remove_bg
 np.set_printoptions(suppress=True)  # use normal numeric notation instead of exponential
 pd.set_option('display.width', 1000)
 
@@ -31,8 +31,8 @@ class AdaptiveShiftEstimation:
         self._vertical_overlap_percent = value
 
     def estimate(self, images, parameters, scan_mode):
-        self._horizontal_overlap = int(round(images[0].shape[1] * self.horizontal_overlap_percent))
-        self._vertical_overlap = int(round(images[0].shape[0] * self.vertical_overlap_percent))
+        self._horizontal_overlap = int(images[0].shape[1] * self.horizontal_overlap_percent)
+        self._vertical_overlap = int(images[0].shape[0] * self.vertical_overlap_percent)
         self._default_image_shape = images[0].shape
         if scan_mode == 'auto':
             x_size, y_size = self.estimate_sizes_scan_auto(images, parameters)
@@ -71,12 +71,16 @@ class AdaptiveShiftEstimation:
         if mode == 'horizontal':
             img1_overlap = img1.shape[1] - overlap
             img2_overlap = overlap
-            shift, error, diffphase = register_translation(img1[:, img1_overlap:], img2[:, :img2_overlap], 100)
+            part1 = remove_bg(img1[:, img1_overlap:])
+            part2 = remove_bg(img2[:, :img2_overlap])
+            shift, error, diffphase = register_translation(part1, part2, 100)
             pairwise_shift = self._default_image_shape[1] - (overlap - shift[1])
         elif mode == 'vertical':
             img1_overlap = img1.shape[0] - overlap
             img2_overlap = overlap
-            shift, error, diffphase = register_translation(img1[img1_overlap:, :], img2[:img2_overlap, :], 100)
+            part1 = remove_bg(img1[img1_overlap:, :])
+            part2 = remove_bg(img2[:img2_overlap, :])
+            shift, error, diffphase = register_translation(part1, part2, 100)
             pairwise_shift = self._default_image_shape[0] - (overlap - shift[0])
         return pairwise_shift
 
@@ -139,6 +143,8 @@ class AdaptiveShiftEstimation:
     # ----------- Estimation of auto scanned images -----------------
 
     def estimate_sizes_scan_auto(self, images, image_sizes):
+        nrows = len(image_sizes)
+
         # get maximum row width calculated from microscope coordinates
         # it will serve as initial estimation of zero padding for the right side of the image
         row_width = []
@@ -147,37 +153,48 @@ class AdaptiveShiftEstimation:
         max_row_width = max(row_width)
 
         # estimate row width and height
+        # each cycle reuses "next_row" from previous loop as current row
         x_sizes = []
         y_sizes = [self._default_image_shape[0]]
         image_rows = []
-
-        nrows = len(image_sizes)
         for row in range(0, nrows-1):
             print('row', row)
 
-            this_row_ids = [i[2] for i in image_sizes[row]]
-            this_row_x_sizes_from_micro = [i[0] for i in image_sizes[row]]
-            this_row_x_sizes = self.find_translation_x_scan_auto(images, this_row_ids, this_row_x_sizes_from_micro)
-            x_sizes.append(this_row_x_sizes)
+            if row == 0:
+                cur_row = [i[2] for i in image_sizes[0]]
+                x_size_cur = self.find_translation_x_scan_auto(images, cur_row, max_row_width)
+                diff = max_row_width - sum(x_size_cur)
+                if diff > 0:
+                    x_size_cur[-1] += diff
 
-            diff = max_row_width - sum(this_row_x_sizes)
+                x_sizes.append(x_size_cur)
+
+            else:
+                cur_row = next_row.copy()
+                #cur_row_size_from_micro = next_row_size_from_micro.copy()
+                x_size_cur = x_size_next.copy()  # reuse previous x_size_next as x_size_cur
+
+            next_row = [i[2] for i in image_sizes[row + 1]]
+            x_size_next = self.find_translation_x_scan_auto(images, next_row, max_row_width)
+
+            diff = max_row_width - sum(x_size_next)
             if diff > 0:
-                this_row_x_sizes[-1] += diff
+                x_size_next[-1] += diff
             elif diff < 0:
-                max_row_width = sum(this_row_x_sizes)
+                max_row_width = sum(x_size_next)
                 new_diff = abs(diff)
                 for x in x_sizes:
                     x[-1] += new_diff
 
-            image_rows.append(self.stitch_images_x_scan_auto(images, this_row_ids, this_row_x_sizes))
+            x_sizes.append(x_size_next)
 
-            if row == 0:
-                continue
-            else:
-                this_row_y_size = int(round(self.find_translation_y_scan_auto(image_rows)))
-                y_sizes.append(this_row_y_size)
+            image_rows.append(self.stitch_images_x_scan_auto(images, cur_row, x_size_cur))
+            image_rows.append(self.stitch_images_x_scan_auto(images, next_row, x_size_next))
 
-                del image_rows[0]
+            y_size_next = int(round(self.find_translation_y_scan_auto(image_rows)))
+            y_sizes.append(y_size_next)
+
+            del image_rows[0]
 
         return x_sizes, y_sizes
 
