@@ -5,6 +5,7 @@ import argparse
 import tifffile as tif
 from tifffile import TiffWriter
 import gc
+import re
 import numpy as np
 import pandas as pd
 from datetime import datetime
@@ -121,8 +122,12 @@ def main():
             img_sizes = get_image_sizes_auto(tag_Images, reference_channel)
             parameters = img_sizes
             ids = []
+            x_size = []
+            y_size = []
             for row in img_sizes:
                 ids.append([i[2] for i in row])
+                x_size.append([i[0] for i in row])
+                y_size.append(row[0][1])
         elif scan_mode == 'manual':
             ids, x_size, y_size = get_image_sizes_manual(tag_Images, reference_channel)
             parameters = ids
@@ -136,35 +141,58 @@ def main():
             x_size, y_size = estimator.estimate(z_max_img_list, parameters, scan_mode)
             del z_max_img_list
     else:
-        print('using parameters from csv files')
+        print('using parameters from loaded files')
         if not load_params.endswith('/'):
             load_params = load_params + '/'
-        ids = pd.read_csv(load_params + 'image_ids.csv', index_col=0, header='infer', dtype='object')
-        x_size = pd.read_csv(load_params + 'x_sizes.csv', index_col=0, header='infer', dtype='int64')
-        y_size = pd.read_csv(load_params + 'y_sizes.csv', index_col=0, header='infer', dtype='int64')
-        # convert column names to int
-        ids.columns = ids.columns.astype(int)
-        x_size.columns = x_size.columns.astype(int)
-        y_size.columns = y_size.columns.astype(int)
-        # convert data to int where possible
-        for j in ids.columns:
-            for i in ids.index:
-                try:
-                    val = ids.loc[i, j]
-                    val = int(val)
-                    ids.loc[i, j] = val
-                except ValueError:
-                    pass
-        print(ids)
+
+        if scan_mode == 'auto':
+            ids = []
+            with open(load_params + 'image_ids.txt') as f:
+                for line in f.readlines():
+                    line = re.sub("[\n\s']+", '', line).split(',')
+                    line = [int(i) if i != 'zeros' else i for i in line]
+                    ids.append(line)
+            x_size = []
+            with open(load_params + 'x_sizes.txt') as f:
+                for line in f.readlines():
+                    line = re.sub("[\n\s']+", '', line).split(',')
+                    line = [int(i) if i != 'zeros' else i for i in line]
+                    x_size.append(line)
+            y_size = []
+            with open(load_params + 'y_sizes.txt') as f:
+                line = f.read()
+                line = re.sub("[\n\s']+", '', line).split(',')
+                line = [int(i) if i != 'zeros' else i for i in line]
+                y_size = line
+        elif scan_mode == 'manual':
+            ids = pd.read_csv(load_params + 'image_ids.csv', index_col=0, header='infer', dtype='object')
+            x_size = pd.read_csv(load_params + 'x_sizes.csv', index_col=0, header='infer', dtype='int64')
+            y_size = pd.read_csv(load_params + 'y_sizes.csv', index_col=0, header='infer', dtype='int64')
+            # convert column names to int
+            ids.columns = ids.columns.astype(int)
+            x_size.columns = x_size.columns.astype(int)
+            y_size.columns = y_size.columns.astype(int)
+            # convert data to int where possible
+            for j in ids.columns:
+                for i in ids.index:
+                    try:
+                        val = ids.loc[i, j]
+                        val = int(val)
+                        ids.loc[i, j] = val
+                    except ValueError:
+                        pass
 
     if save_params:
+        print('saving_parameters')
         if scan_mode == 'auto':
             with open(out_dir + 'image_ids.txt', 'w') as f:
-                f.write(ids)
+                for row in ids:
+                    f.write(','.join(str(i) for i in row) + '\n')
             with open(out_dir + 'x_sizes.txt', 'w') as f:
-                f.write(x_size)
+                for row in x_size:
+                    f.write(','.join(str(i) for i in row) + '\n')
             with open(out_dir + 'y_sizes.txt', 'w') as f:
-                f.write(y_size)
+                f.write(','.join(str(i) for i in y_size) + '\n')
         elif scan_mode == 'manual':
             ids.to_csv(out_dir + 'image_ids.csv')
             x_size.to_csv(out_dir + 'x_sizes.csv')
@@ -187,7 +215,7 @@ def main():
 
     if preview_ch != 'none':
         print('generating max z preview')
-        z_proj = stitch_z_projection(preview_ch, fields_path_list, ids, x_size, y_size, True, scan_mode)
+        z_proj = stitch_z_projection(preview_ch, fields_path_list, ids, x_size, y_size, False, scan_mode)
         preview_meta = {preview_ch: final_meta[preview_ch]}
         ome_preview = create_ome_metadata(tag_Name, 'XYCZT', width, height, 1, 1, 1,
                                           'uint16', preview_meta, tag_Images, tag_MeasurementStartTime)

@@ -293,14 +293,14 @@ def get_image_sizes_auto(tag_Images, main_channel):
         row = [j for j in img_pos if j[1] == y_range_sorted[i]]
         row_list.append(row)
 
-    # for each row, if z-score of y-size is > 1, then merge those row together
+    # for each row, if z-score of y-size is > 1, then merge it to previous row
     rows_to_remove = []
     for i in range(1, len(row_list)):
         if z_score[i] > 1:
             prev_row = row_list[i - 1]
-            cur_row = row_list[i]
-            cur_row = [(val[0], prev_row[0][1], val[2]) for val in cur_row]
-            row_list[i - 1].extend(cur_row)
+            this_row = row_list[i]
+            this_row = [(val[0], prev_row[0][1], val[2]) for val in this_row]
+            row_list[i - 1].extend(this_row)
             row_list[i - 1] = sorted(row_list[i - 1], key=lambda x: x[0])
             rows_to_remove.append(i)
 
@@ -320,9 +320,13 @@ def get_image_sizes_auto(tag_Images, main_channel):
             img_coords.reverse()
             img_ids.reverse()
 
+        # start each row with zero padding and full width image
         img_size = [(img_coords[0], 'zeros'), (default_img_width, img_ids[0])]
+        # detect gaps between images
         for i in range(1, len(img_coords)):
             size = img_coords[i] - img_coords[i - 1]
+            # if difference between two adjacent pictures is bigger than width of a picture
+            # then consider this part as a gap, subtract img size from, the rest is size of a gap
             if size > default_img_width:
                 image_size = default_img_width
                 space_size = size - default_img_width
@@ -335,11 +339,11 @@ def get_image_sizes_auto(tag_Images, main_channel):
 
         img_sizes.append(img_size)
 
+    # add zero padding to the end of each row
     max_width = max(row_sizes)
     for i in range(0, len(row_sizes)):
-        if row_sizes[i] < max_width:
-            diff = max_width - row_sizes[i]
-            img_sizes[i].append((diff, 'zeros'))
+        diff = max_width - row_sizes[i]
+        img_sizes[i].append((diff, 'zeros'))
 
     # adding y_coordinate to tuple
     for row in range(0, len(img_sizes)):

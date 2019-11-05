@@ -64,7 +64,7 @@ def equalize_histograms(img_list, contrast_limit=127, grid_size=(41, 41)):
     task = [dask.delayed(clahe.apply(img)) for img in img_list]
     img_list = dask.compute(*task)
     #img_list = list(map(clahe.apply, img_list))
-
+    clahe.collectGarbage()
     return img_list
 
 
@@ -142,7 +142,7 @@ def stitch_images(images, ids, x_size, y_size, scan_mode):
         y_pos_plane = list(np.cumsum(y_size))
         y_pos_plane.insert(0, 0)
 
-        for row in range(0, nrows):
+        for row in range(0, nrows-1):
             f = y_pos_plane[row]  # from
             t = y_pos_plane[row + 1]  # to
             res[f:t, :] = np.concatenate(crop_images_scan_auto(images, ids[row], x_size[row], y_size[row]), axis=1)
@@ -166,8 +166,8 @@ def stitch_plane(plane_paths, clahe, ids, x_size, y_size, do_illum_cor, scan_mod
     img_list = read_images(plane_paths, is_dir=False)
     if do_illum_cor:
         img_list = list(map(clahe.apply, img_list))
-        result_plane = stitch_images(img_list, ids, x_size, y_size, scan_mode)
         clahe.collectGarbage()
+        result_plane = stitch_images(img_list, ids, x_size, y_size, scan_mode)
     else:
         result_plane = stitch_images(img_list, ids, x_size, y_size, scan_mode)
     return result_plane
@@ -180,9 +180,9 @@ def stitch_plane2(plane_paths, clahe, ids, x_size, y_size, do_illum_cor, scan_mo
     nrows = sum(y_size.iloc[:, 0])
     result_plane = np.zeros((1, nrows, ncols), dtype=np.uint16)
     if do_illum_cor:
-        img_list = [clahe.apply(i) for i in img_list]
-        result_plane[0, :, :] = stitch_images(img_list, ids, x_size, y_size, scan_mode)
+        img_list = list(map(clahe.apply, img_list))
         clahe.collectGarbage()
+        result_plane[0, :, :] = stitch_images(img_list, ids, x_size, y_size, scan_mode)
     else:
         result_plane[0, :, :] = stitch_images(img_list, ids, x_size, y_size, scan_mode)
     return result_plane
