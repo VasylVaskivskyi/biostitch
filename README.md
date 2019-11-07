@@ -15,7 +15,7 @@ This program uses microscope coordinates from `Index.idx.xml` to stitch images. 
 
 **`--stitch_channels`**   specify space separated channel names to stitch (e.g. "DAPI" "ALEXA 657"). Default is to use all channels.
 
-**`--channels_to_correct_illumination`**  specify space separated channel names that require correction of bad illumination (e.g. "DAPI"), RNA spot channels usually do not need correction. Default is to apply correction to all channels. Specify `none` if you do not want to do correction at all.
+**`--channels_to_correct_illumination`**  specify space separated channel names that require correction of bad illumination (e.g. "DAPI"), RNA spot channels usually do not need correction. Default is `none`. Use `all` to apply do correction at all.
 
 **`--mode`**  **regular_channel**: produce z-stacks, save by channel (uses more memory, a bit faster); 
             **regular_plane**: produce z-stacks, save by plane (uses less memory, a bit slower); 
@@ -25,7 +25,7 @@ This program uses microscope coordinates from `Index.idx.xml` to stitch images. 
 
 **`--overlap`**     if adaptive flag is enable you have to specify two values that correspond to horizontal and vertical overlap of images in fractions of 1. Default overlap: horizontal 0.1, vertical 0.1.
 
-**`--make_preview`**  enabling this flag will generate z-max projection of the first channel (usually DAPI) to the out_dir.
+**`--preview_channel`**  will generate z-max projection of specified channel in the out_dir.
 
 **`--save_params`**     will save parameters estimated during stitching into 3 csv files (image_ids, x_sizes, y_sizes)
 
@@ -42,9 +42,9 @@ Then add name of the `--mode`**:** `maxz` will write maximum z-projections of ev
 
 The flag `--adaptive` enables adaptive estimation of overlap between images, however when enabling in you have to specify **maximum percent of overlap** between images in the `--overlap` command **in fractions of 1**. The overlap in theory should not be a big value, typically 10-20 percent (0.1-0.2). 
 
-The flag `--make_preview` will allow to save max z-projection of the first channel which is usually a DAPI channel, to assess if stitching was successful or use later for registration. 
+The parameter `--preview_channel` allows to save max z-projection of specified channel, to assess if stitching was successful or use later for registration.
 
-If you want to select specific channels to be stitched you can specify them in `--stitch_cahnnels` command, separated by space, the default value is to stitch all channels. Use double quotes (**"Alto 490LS"**) if names have spaces. 
+If you want to select specific channels to be stitched you can specify them in `--stitch_channels` command, separated by space, the default value is to stitch all channels. Use double quotes (**"Alto 490LS"**) if names have spaces.
 
 If you want to correct uneven illumination in one of the channels you can specify it in the `--channels_to_correct_illumination` command, default value is apply correction to all channels. You can provide `none` to prevent applying illumination correction.
 
