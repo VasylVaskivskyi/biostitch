@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
-from skimage.feature import register_translation
-from image_processing import remove_bg
+import cv2 as cv
+#from skimage.feature import register_translation
 np.set_printoptions(suppress=True)  # use normal numeric notation instead of exponential
 pd.set_option('display.width', 1000)
 
@@ -71,17 +71,18 @@ class AdaptiveShiftEstimation:
         if mode == 'horizontal':
             img1_overlap = img1.shape[1] - overlap
             img2_overlap = overlap
-            part1 = img1[:, img1_overlap:]
-            part2 = img2[:, :img2_overlap]
-            shift, error, diffphase = register_translation(part1, part2, 100)
-            pairwise_shift = self._default_image_shape[1] - (overlap - shift[1])
+            part1 = cv.normalize(img1[:, img1_overlap:], None, 0, 1, cv.NORM_MINMAX, cv.CV_32F)
+            part2 = cv.normalize(img2[:, :img2_overlap], None, 0, 1, cv.NORM_MINMAX, cv.CV_32F)
+            shift, error = cv.phaseCorrelate(part1, part2)
+            pairwise_shift = self._default_image_shape[1] - (overlap - (-shift[0]))
         elif mode == 'vertical':
             img1_overlap = img1.shape[0] - overlap
             img2_overlap = overlap
-            part1 = img1[img1_overlap:, :]
-            part2 = img2[:img2_overlap, :]
-            shift, error, diffphase = register_translation(part1, part2, 100)
-            pairwise_shift = self._default_image_shape[0] - (overlap - shift[0])
+            part1 = cv.normalize(img1[img1_overlap:, :], None, 0, 1, cv.NORM_MINMAX, cv.CV_32F)
+            part2 = cv.normalize(img2[:img2_overlap, :], None, 0, 1, cv.NORM_MINMAX, cv.CV_32F)
+            shift, error = cv.phaseCorrelate(part1, part2)
+            pairwise_shift = self._default_image_shape[0] - (overlap - (-shift[1]))
+
         return pairwise_shift
 
     def find_shift_series(self, images, id_series, mode):

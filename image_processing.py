@@ -22,12 +22,12 @@ def read_images(path, is_dir):
     if is_dir:
         file_list = [fn for fn in os.listdir(path) if fn.endswith(allowed_extensions)]
         file_list.sort(key=alphaNumOrder)
-        task = [dask.delayed(path + fn) for fn in file_list]
+        task = [dask.delayed(tif.imread)(path + fn) for fn in file_list]
         img_list = dask.compute(*task)
         #img_list = list(map(tif.imread, [path + fn for fn in file_list]))
     else:
         if type(path) == list:
-            task = [dask.delayed(tif.imread(p)) for p in path]
+            task = [dask.delayed(tif.imread)(p) for p in path]
             img_list = dask.compute(*task)
             #img_list = list(map(tif.imread, path))
         else:
@@ -36,17 +36,21 @@ def read_images(path, is_dir):
     return img_list
 
 
-def remove_bg(image):
-    kernel_size1 = [max(image.shape) // 10] * 2
-    kernel_size2 = [kernel_size1[0] // 2, kernel_size1[1] // 2]
+def remove_bg(image, image_shape=None):
+    if image_shape == None:
+        kernel_size1 = [max(image.shape) // 10] * 2
+        kernel_size2 = [kernel_size1[0] // 2, kernel_size1[1] // 2]
+    else:
+        kernel_size1 = (image_shape[1] // 10, image_shape[0] // 10)
+        kernel_size2 = [kernel_size1[0] // 2, kernel_size1[1] // 2]
     kernel_size1 = tuple(i if i % 2 != 0 else i + 1 for i in kernel_size1)
     kernel_size2 = tuple(i if i % 2 != 0 else i + 1 for i in kernel_size2)
 
     kernel_erode = cv.getStructuringElement(cv.MORPH_ELLIPSE, kernel_size1)
-    kernel_dialte = cv.getStructuringElement(cv.MORPH_ELLIPSE, kernel_size2)
+    kernel_dilate = cv.getStructuringElement(cv.MORPH_ELLIPSE, kernel_size2)
     img = cv.normalize(image, None, 0, 1, cv.NORM_MINMAX, cv.CV_32F)
     cor = cv.erode(img, kernel_erode, None)
-    cor = cv.dilate(cor, kernel_dialte, None)
+    cor = cv.dilate(cor, kernel_dilate, None)
     cor = cv.GaussianBlur(cor, (0, 0), kernel_size2[0], None, kernel_size2[1])
     res = img - cor
     result = cv.normalize(res, None, 0, 65535, cv.NORM_MINMAX, cv.CV_16U)
@@ -61,7 +65,7 @@ def equalize_histograms(img_list, contrast_limit=127, grid_size=(41, 41)):
     contrast_limit = 256
 
     clahe = cv.createCLAHE(contrast_limit, grid_size)
-    task = [dask.delayed(clahe.apply(img)) for img in img_list]
+    task = [dask.delayed(clahe.apply)(img) for img in img_list]
     img_list = dask.compute(*task)
     #img_list = list(map(clahe.apply, img_list))
     clahe.collectGarbage()
@@ -76,7 +80,7 @@ def z_project(field):
 def create_z_projection_for_fov(channel_name, path_list):
     """ Read images, convert them into stack, get max z-projection"""
     channel = path_list[channel_name]
-    task = [dask.delayed(z_project(field)) for field in channel]
+    task = [dask.delayed(z_project)(field) for field in channel]
     z_max_img_list = dask.compute(*task)
 
     #for field in channel:
@@ -138,11 +142,11 @@ def stitch_images(images, ids, x_size, y_size, scan_mode):
         plane_width = sum(x_size[0])
         plane_height = sum(y_size)
         res = np.zeros((plane_height, plane_width), dtype=np.uint16)
-        nrows = len(ids)
+        nrows = len(y_size)
         y_pos_plane = list(np.cumsum(y_size))
         y_pos_plane.insert(0, 0)
 
-        for row in range(0, nrows-1):
+        for row in range(0, nrows):
             f = y_pos_plane[row]  # from
             t = y_pos_plane[row + 1]  # to
             res[f:t, :] = np.concatenate(crop_images_scan_auto(images, ids[row], x_size[row], y_size[row]), axis=1)

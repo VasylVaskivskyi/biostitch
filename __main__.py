@@ -31,10 +31,10 @@ def main():
     parser.add_argument('--reference_channel', type=str, default='none',
                         help='select channel that will be used for estimating stitching parameters. Default is to use first channel.')
     parser.add_argument('--preview_channel', type=str, default='none',
-                        help='will generate z-max projection of specified channel.')
-    parser.add_argument('--stitch_channels', type=str, nargs='+', default=['all'], 
+                        help='will generate z-max projection of specified channel in the out_dir.')
+    parser.add_argument('--stitch_channels', type=str, nargs='+', default=['all'],
                         help='specify space separated channel names to stitch (e.g. "DAPI" "ALEXA 657"); \nall: will stitch all channels. Default to stitch all channels.')
-    parser.add_argument('--channels_to_correct_illumination', type=str, nargs='+', default=['all'], 
+    parser.add_argument('--channels_to_correct_illumination', type=str, nargs='+', default=['none'],
                         help='specify space separated channel names that require correction of bad illumination (e.g. "DAPI"), RNA spot channels usually do not need correction.\nall: will apply correction to all channels. \nnone: will not apply to any.')
     parser.add_argument('--mode', type=str, default='regular_channel', 
                         help='regular_channel: produce z-stacks, save by channel.\nregular_plane: produce z-stacks, save by plane.\nmaxz: produce max z-projections instead of z-stacks.')
@@ -61,7 +61,7 @@ def main():
     is_adaptive = args.adaptive
     overlap = args.overlap
     save_params = args.save_params
-    load_params = args.load_params
+    param_path = args.load_params
     scan_mode = args.scan_mode
 
     # check if specified directories exist
@@ -78,13 +78,8 @@ def main():
     st = datetime.now()
     print('\nstarted', st)
 
-    '''
-    xml_path = 'C:/Users/vv3/Desktop/image/images/Hiplex_run1_cycle1_MsPos__2019-03-05T10_52_04-Measurement_2/Index.idx.xml'
-    img_dir = 'C:/Users/vv3/Desktop/image/images/Hiplex_run1_cycle1_MsPos__2019-03-05T10_52_04-Measurement_2/Images/'
-    out_dir = 'C:/Users/vv3/Desktop/image/stitched/'
-    reference_channel = 'DAPI'
-    '''
-    
+
+# ----------- loading xml metadata ------------- #
     tag_Images, tag_Name, tag_MeasurementStartTime = load_necessary_xml_tags(xml_path)
     fields_path_list = get_image_paths_for_fields_per_channel(img_dir, tag_Images)
     planes_path_list = get_image_paths_for_planes_per_channel(img_dir, tag_Images)
@@ -92,6 +87,7 @@ def main():
     channel_names = list(planes_path_list.keys())
     channel_ids = {ch: i for i, ch in enumerate(channel_names)}
 
+# ----------- checking if parsed arguments ---------- #
     if stitch_only_ch == ['all']:
         if reference_channel == 'none':
             reference_channel = channel_names[0]
@@ -117,7 +113,8 @@ def main():
     elif ill_cor_ch == ['none']:
         ill_cor_ch = []
 
-    if load_params == 'none':
+# ----------- loading previously estimated stitching parameters from files ------------- #
+    if param_path == 'none':
         if scan_mode == 'auto':
             img_sizes = get_image_sizes_auto(tag_Images, reference_channel)
             parameters = img_sizes
@@ -142,32 +139,32 @@ def main():
             del z_max_img_list
     else:
         print('using parameters from loaded files')
-        if not load_params.endswith('/'):
-            load_params = load_params + '/'
+        if not param_path.endswith('/'):
+            param_path = param_path + '/'
 
         if scan_mode == 'auto':
             ids = []
-            with open(load_params + 'image_ids.txt') as f:
+            with open(param_path + 'image_ids.txt') as f:
                 for line in f.readlines():
-                    line = re.sub("[\n\s']+", '', line).split(',')
+                    line = re.sub(r"[\n\s']+", '', line).split(',')
                     line = [int(i) if i != 'zeros' else i for i in line]
                     ids.append(line)
             x_size = []
-            with open(load_params + 'x_sizes.txt') as f:
+            with open(param_path + 'x_sizes.txt') as f:
                 for line in f.readlines():
-                    line = re.sub("[\n\s']+", '', line).split(',')
+                    line = re.sub(r"[\n\s']+", '', line).split(',')
                     line = [int(i) if i != 'zeros' else i for i in line]
                     x_size.append(line)
             y_size = []
-            with open(load_params + 'y_sizes.txt') as f:
+            with open(param_path + 'y_sizes.txt') as f:
                 line = f.read()
-                line = re.sub("[\n\s']+", '', line).split(',')
+                line = re.sub(r"[\n\s']+", '', line).split(',')
                 line = [int(i) if i != 'zeros' else i for i in line]
                 y_size = line
         elif scan_mode == 'manual':
-            ids = pd.read_csv(load_params + 'image_ids.csv', index_col=0, header='infer', dtype='object')
-            x_size = pd.read_csv(load_params + 'x_sizes.csv', index_col=0, header='infer', dtype='int64')
-            y_size = pd.read_csv(load_params + 'y_sizes.csv', index_col=0, header='infer', dtype='int64')
+            ids = pd.read_csv(param_path + 'image_ids.csv', index_col=0, header='infer', dtype='object')
+            x_size = pd.read_csv(param_path + 'x_sizes.csv', index_col=0, header='infer', dtype='int64')
+            y_size = pd.read_csv(param_path + 'y_sizes.csv', index_col=0, header='infer', dtype='int64')
             # convert column names to int
             ids.columns = ids.columns.astype(int)
             x_size.columns = x_size.columns.astype(int)
@@ -182,6 +179,7 @@ def main():
                     except ValueError:
                         pass
 
+# ---------- saving estimated parameters to files ------------- #
     if save_params:
         print('saving_parameters')
         if scan_mode == 'auto':
@@ -198,6 +196,8 @@ def main():
             x_size.to_csv(out_dir + 'x_sizes.csv')
             y_size.to_csv(out_dir + 'y_sizes.csv')
 
+# -------- generating ome metadata ------------ #
+    # width and height of single plain
     if scan_mode == 'auto':
         width = sum(x_size[0])
         height = sum(y_size)
@@ -210,14 +210,15 @@ def main():
     final_meta = dict()
     for i, channel in enumerate(channel_names):
         final_meta[channel] = channels_meta[channel].replace('Channel', 'Channel ID="Channel:0:' + str(i) + '"')
-    ome = create_ome_metadata(tag_Name, 'XYCZT', width, height, nchannels, nplanes, 1, 'uint16', final_meta, tag_Images, tag_MeasurementStartTime)
-    ome_maxz = create_ome_metadata(tag_Name, 'XYCZT', width, height, nchannels, 1, 1, 'uint16', final_meta, tag_Images, tag_MeasurementStartTime)
+    ome = create_ome_metadata(tag_Name, width, height, nchannels, nplanes, 1, 'uint16', final_meta, tag_Images, tag_MeasurementStartTime)
+    ome_maxz = create_ome_metadata(tag_Name, width, height, nchannels, 1, 1, 'uint16', final_meta, tag_Images, tag_MeasurementStartTime)
 
+# ---------- image stitching ------------- #
     if preview_ch != 'none':
         print('generating max z preview')
         z_proj = stitch_z_projection(preview_ch, fields_path_list, ids, x_size, y_size, False, scan_mode)
         preview_meta = {preview_ch: final_meta[preview_ch]}
-        ome_preview = create_ome_metadata(tag_Name, 'XYCZT', width, height, 1, 1, 1,
+        ome_preview = create_ome_metadata(tag_Name, width, height, 1, 1, 1,
                                           'uint16', preview_meta, tag_Images, tag_MeasurementStartTime)
         tif.imwrite(out_dir + 'preview.tif', z_proj, description=ome_preview)
         print('preview is available at ' + out_dir + 'preview.tif')
@@ -275,6 +276,7 @@ def main():
                 TW.save(stitch_z_projection(channel, fields_path_list, ids, x_size, y_size, do_illum_cor, scan_mode),
                         photometric='minisblack', contiguous=True, description=ome_maxz)
 
+# ----------- saving ome metadata to a separate XML file ----------- #
     with open(out_dir + 'ome_meta.xml', 'w', encoding='utf-8') as f:
         if stitching_mode == 'regular_plane' or stitching_mode == 'regular_channel':
             f.write(ome)
