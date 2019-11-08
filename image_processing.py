@@ -112,10 +112,10 @@ def crop_images_scan_manual(images, ids, x_sizes, y_sizes):
         if _id == 'zeros':
             img = np.zeros((y_sizes[j], x_sizes[j]), dtype=np.uint16)
         else:
-            x_shift = default_img_shape[1] - x_sizes[j]
-            y_shift = default_img_shape[0] - y_sizes[j]
+            #x_shift = default_img_shape[1] - x_sizes[j]
+            #y_shift = default_img_shape[0] - y_sizes[j]
 
-            img = images[_id][y_shift:, x_shift:]
+            img = images[_id][:y_sizes[j], :x_sizes[j]]
         r_images.append(img)
     return r_images
 
@@ -127,9 +127,9 @@ def crop_images_scan_auto(images, ids, x_sizes, y_sizes):
         if _id == 'zeros':
             img = np.zeros((y_sizes, x_sizes[j]), dtype=np.uint16)
         else:
-            x_shift = default_img_shape[1] - x_sizes[j]
-            y_shift = default_img_shape[0] - y_sizes
-            img = images[_id][y_shift:, x_shift:]
+            #x_shift = default_img_shape[1] - x_sizes[j]
+            #y_shift = default_img_shape[0] - y_sizes
+            img = images[_id][:y_sizes, :x_sizes[j]]
 
         r_images.append(img)
 
