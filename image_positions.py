@@ -216,22 +216,14 @@ def get_image_sizes_manual(tag_Images, main_channel):
     x_size = pd.DataFrame(columns=x_df.columns, index=x_df.index)
     y_size = pd.DataFrame(columns=y_df.columns, index=y_df.index)
 
-    # assuming that all images are of the same size, so default image size equals size of the first image in xml file
-    x = int(tag_Images[0].find('ImageSizeX').text)
-    y = int(tag_Images[0].find('ImageSizeY').text)
 
-    # set size of zero padding images as size of default image
-    for j, _id in enumerate(id_df.iloc[:, 0]):
-        if _id != 'zeros':
-            x_size.iloc[j, 0] = x
-
-    for j, _id in enumerate(id_df.iloc[0, :]):
-        if _id != 'zeros':
-            y_size.iloc[0, j] = y
+    # assuming that all images are of the same size, so default image size from first image in xml are taken
+    default_img_width = int(tag_Images[0].find('ImageSizeX').text)
+    default_img_height = int(tag_Images[0].find('ImageSizeY').text)
 
     # set size of first column and first row to the size of single picture
-    x_size.iloc[:, -1] = int(round(x_size.iloc[:, -1].mean()))
-    y_size.iloc[-1, :] = int(round(y_size.iloc[-1, :].mean()))
+    x_size.iloc[:, 0] = default_img_width
+    y_size.iloc[0, :] = default_img_height
 
     # fill nan with mean values of cols and rows
     for n in range(1, ncols):

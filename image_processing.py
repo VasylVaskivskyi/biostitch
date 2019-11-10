@@ -23,12 +23,12 @@ def read_images(path, is_dir):
         file_list = [fn for fn in os.listdir(path) if fn.endswith(allowed_extensions)]
         file_list.sort(key=alphaNumOrder)
         task = [dask.delayed(tif.imread)(path + fn) for fn in file_list]
-        img_list = dask.compute(*task)
+        img_list = dask.compute(*task, scheduler='threads')
         #img_list = list(map(tif.imread, [path + fn for fn in file_list]))
     else:
         if type(path) == list:
             task = [dask.delayed(tif.imread)(p) for p in path]
-            img_list = dask.compute(*task)
+            img_list = dask.compute(*task, scheduler='threads')
             #img_list = list(map(tif.imread, path))
         else:
             img_list = tif.imread(path)
@@ -66,7 +66,7 @@ def equalize_histograms(img_list, contrast_limit=127, grid_size=(41, 41)):
 
     clahe = cv.createCLAHE(contrast_limit, grid_size)
     task = [dask.delayed(clahe.apply)(img) for img in img_list]
-    img_list = dask.compute(*task)
+    img_list = dask.compute(*task, scheduler='processes')
     #img_list = list(map(clahe.apply, img_list))
     clahe.collectGarbage()
     return img_list
@@ -81,7 +81,7 @@ def create_z_projection_for_fov(channel_name, path_list):
     """ Read images, convert them into stack, get max z-projection"""
     channel = path_list[channel_name]
     task = [dask.delayed(z_project)(field) for field in channel]
-    z_max_img_list = dask.compute(*task)
+    z_max_img_list = dask.compute(*task, scheduler='threads')
 
     #for field in channel:
     #   z_max_img_list.append(np.max(np.stack(read_images(field, is_dir=False), axis=0), axis=0))

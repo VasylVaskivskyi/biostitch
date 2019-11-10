@@ -60,8 +60,9 @@ def main():
     stitching_mode = args.mode
     is_adaptive = args.adaptive
     overlap = args.overlap
-    save_param = args.save_params
-    param_path = args.load_params
+    save_param = args.save_param
+    param_path = args.load_param
+
     scan_mode = args.scan_mode
 
     # check if specified directories exist
@@ -180,7 +181,7 @@ def main():
                         pass
 
 # ---------- saving estimated parameters to files ------------- #
-    if save_params:
+    if save_param:
         print('saving_parameters')
         if scan_mode == 'auto':
             with open(out_dir + 'image_ids.txt', 'w') as f:
