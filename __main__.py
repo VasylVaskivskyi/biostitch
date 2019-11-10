@@ -42,9 +42,9 @@ def main():
                         help='turn on adaptive estimation of image translation')
     parser.add_argument('--overlap', type=float, nargs='+', default=[0.1, 0.1],
                         help='two values that correspond to horizontal and vertical overlap of images in fractions of 1. Default overalp: horizontal 0.1, vertical 0.1.')
-    parser.add_argument('--save_params', action='store_true', default=False,
+    parser.add_argument('--save_param', action='store_true', default=False,
                         help='will save parameters estimated during stitching into 3 csv files (image_ids, x_sizes, y sizes)')
-    parser.add_argument('--load_params', type=str, default='none',
+    parser.add_argument('--load_param', type=str, default='none',
                         help='specify folder that contais the following csv files: image_ids.csv, x_size.csv, y_sizes.csv, that contain previously estimated parameters')
     parser.add_argument('--scan_mode', type=str, default='none', required=True,
                         help='specify scanning mode (auto or manual)')
@@ -60,8 +60,8 @@ def main():
     stitching_mode = args.mode
     is_adaptive = args.adaptive
     overlap = args.overlap
-    save_params = args.save_params
-    param_path = args.load_params
+    save_param = args.save_param
+    param_path = args.load_param
     scan_mode = args.scan_mode
 
     # check if specified directories exist
@@ -180,7 +180,7 @@ def main():
                         pass
 
 # ---------- saving estimated parameters to files ------------- #
-    if save_params:
+    if save_param:
         print('saving_parameters')
         if scan_mode == 'auto':
             with open(out_dir + 'image_ids.txt', 'w') as f:

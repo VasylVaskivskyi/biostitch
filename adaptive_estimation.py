@@ -74,14 +74,22 @@ class AdaptiveShiftEstimation:
             part1 = cv.normalize(img1[:, img1_overlap:], None, 0, 1, cv.NORM_MINMAX, cv.CV_32F)
             part2 = cv.normalize(img2[:, :img2_overlap], None, 0, 1, cv.NORM_MINMAX, cv.CV_32F)
             shift, error = cv.phaseCorrelate(part1, part2)
-            pairwise_shift = self._default_image_shape[1] - (overlap - (-shift[0]))
+            hor_shift = shift[0]
+            if hor_shift < 0:
+                pairwise_shift = self._default_image_shape[1] - (overlap + hor_shift)
+            else:
+                pairwise_shift = self._default_image_shape[1] - hor_shift
         elif mode == 'vertical':
             img1_overlap = img1.shape[0] - overlap
             img2_overlap = overlap
             part1 = cv.normalize(img1[img1_overlap:, :], None, 0, 1, cv.NORM_MINMAX, cv.CV_32F)
             part2 = cv.normalize(img2[:img2_overlap, :], None, 0, 1, cv.NORM_MINMAX, cv.CV_32F)
             shift, error = cv.phaseCorrelate(part1, part2)
-            pairwise_shift = self._default_image_shape[0] - (overlap - (-shift[1]))
+            ver_shift = shift[1]
+            if ver_shift < 0:
+                pairwise_shift = self._default_image_shape[0] - (overlap + ver_shift)
+            else:
+                pairwise_shift = self._default_image_shape[0] - ver_shift
 
         return pairwise_shift
 
@@ -146,10 +154,7 @@ class AdaptiveShiftEstimation:
     def estimate_sizes_scan_auto(self, images, image_sizes):
         # get maximum row width calculated from microscope coordinates
         # it will serve as initial estimation of zero padding for the right side of the image
-        row_width = []
-        for row in image_sizes:
-            row_width.append(sum([i[0] for i in row]))
-        max_row_width = max(row_width)
+
 
         # estimate row width and height
         x_sizes = []
@@ -157,7 +162,7 @@ class AdaptiveShiftEstimation:
         image_rows = []
 
         nrows = len(image_sizes)
-        for row in range(0, nrows - 1):
+        for row in range(0, nrows):
             print('row', row)
 
             this_row_ids = [i[2] for i in image_sizes[row]]
@@ -165,24 +170,20 @@ class AdaptiveShiftEstimation:
             this_row_x_sizes = self.find_translation_x_scan_auto(images, this_row_ids, this_row_x_sizes_from_micro)
             x_sizes.append(this_row_x_sizes)
 
-            diff = max_row_width - sum(this_row_x_sizes)
-            if diff > 0:
-                this_row_x_sizes[-1] += diff
-            elif diff < 0:
-                max_row_width = sum(this_row_x_sizes)
-                new_diff = abs(diff)
-                for x in x_sizes:
-                    x[-1] += new_diff
+        max_row_width = max([sum(row) for row in x_sizes])
 
-            image_rows.append(self.stitch_images_x_scan_auto(images, this_row_ids, this_row_x_sizes))
-
-            if row == 0:
-                continue
-            else:
-                this_row_y_size = int(round(self.find_translation_y_scan_auto(image_rows)))
-                y_sizes.append(this_row_y_size)
-
-                del image_rows[0]
+        for row in range(0, len(x_sizes)):
+            x_sizes[row][-1] += (max_row_width - sum(x_sizes[row]))
+        for row in range(0, nrows - 1):
+            this_row_ids = [i[2] for i in image_sizes[row]]
+            next_row_ids = [i[2] for i in image_sizes[row + 1]]
+            this_row_x_sizes = x_sizes[row]
+            next_row_x_sizes = x_sizes[row + 1]
+            row1 = self.stitch_images_x_scan_auto(images, this_row_ids, this_row_x_sizes)
+            row2 = self.stitch_images_x_scan_auto(images, next_row_ids, next_row_x_sizes)
+            print(row, row1.shape, row2.shape)
+            this_row_y_size = int(round(self.find_translation_y_scan_auto(row1, row2)))
+            y_sizes.append(this_row_y_size)
 
         return x_sizes, y_sizes
 
@@ -193,7 +194,7 @@ class AdaptiveShiftEstimation:
             if ids[i] == 'zeros':
                 res[i] = x_sizes[i]
             elif ids[i + 1] == 'zeros':
-                res[i + 1] = x_sizes[i]
+                res[i + 1] = x_sizes[i + 1]
             else:
                 img1 = ids[i]
                 img2 = ids[i + 1]
@@ -221,7 +222,7 @@ class AdaptiveShiftEstimation:
 
         return res
 
-    def find_translation_y_scan_auto(self, image_rows):
-        y_size = self.find_pairwise_shift(image_rows[0], image_rows[1], self._vertical_overlap, 'vertical')
+    def find_translation_y_scan_auto(self, img1, img2):
+        y_size = self.find_pairwise_shift(img1, img2, self._vertical_overlap, 'vertical')
         return y_size
 
