@@ -111,7 +111,7 @@ class AdaptiveShiftEstimation:
                 elif mode == 'vertical':
                     overlap = self._vertical_overlap
 
-                res.iloc[i + 1] = self.find_pairwise_shift(images[img1], images[img2], overlap, mode)
+                res.iloc[i] = self.find_pairwise_shift(images[img1], images[img2], overlap, mode)
 
         return res
 
@@ -123,7 +123,7 @@ class AdaptiveShiftEstimation:
         for i in range(0, nrows):
             x_size.iloc[i,:] = self.find_shift_series(images, ids.iloc[i, :], 'horizontal')
         x_size = self.use_median(x_size, axis=0)
-        x_size.iloc[:, 0] = self._default_image_shape[1]
+        x_size.iloc[:, ncols-1] = self._default_image_shape[1]
         
         col_means = list(x_size.mean(axis=0))
         for i in range(0, ncols):
@@ -140,7 +140,7 @@ class AdaptiveShiftEstimation:
         for i in range(0, ncols):
             y_size.iloc[:, i] = self.find_shift_series(images, ids.iloc[:, i], 'vertical')
         y_size = self.use_median(y_size, axis=1)
-        y_size.iloc[0, :] = self._default_image_shape[0]
+        y_size.iloc[nrows-1, :] = self._default_image_shape[0]
         
         row_means = list(y_size.mean(axis=1))
         for i in range(0, nrows):
@@ -158,7 +158,7 @@ class AdaptiveShiftEstimation:
 
         # estimate row width and height
         x_sizes = []
-        y_sizes = [self._default_image_shape[0]]
+        y_sizes = []
         image_rows = []
 
         nrows = len(image_sizes)
@@ -199,10 +199,7 @@ class AdaptiveShiftEstimation:
                 img1 = ids[i]
                 img2 = ids[i + 1]
 
-                res[i + 1] = int(round(self.find_pairwise_shift(images[img1], images[img2], self._horizontal_overlap, 'horizontal')))
-
-                if ids[i - 1] == 'zeros':
-                    res[i] = self._default_image_shape[1]
+                res[i] = int(round(self.find_pairwise_shift(images[img1], images[img2], self._horizontal_overlap, 'horizontal')))
 
         return res
 
@@ -213,8 +210,8 @@ class AdaptiveShiftEstimation:
             if _id == 'zeros':
                 img = np.zeros((self._default_image_shape[0], x_sizes[j]), dtype=np.uint16)
             else:
-                x_shift = self._default_image_shape[1] - x_sizes[j]
-                img = images[_id][:, x_shift:]
+                #x_shift = self._default_image_shape[1] - x_sizes[j]
+                img = images[_id][:, x_sizes[j]:]
 
             r_images.append(img)
         # stitching

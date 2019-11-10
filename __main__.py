@@ -62,6 +62,7 @@ def main():
     overlap = args.overlap
     save_param = args.save_param
     param_path = args.load_param
+
     scan_mode = args.scan_mode
 
     # check if specified directories exist
