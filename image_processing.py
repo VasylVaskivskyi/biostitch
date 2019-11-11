@@ -112,10 +112,10 @@ def crop_images_scan_manual(images, ids, x_sizes, y_sizes):
         if _id == 'zeros':
             img = np.zeros((y_sizes[j], x_sizes[j]), dtype=np.uint16)
         else:
-            #x_shift = default_img_shape[1] - x_sizes[j]
-            #y_shift = default_img_shape[0] - y_sizes[j]
+            x_shift = default_img_shape[1] - x_sizes[j]
+            y_shift = default_img_shape[0] - y_sizes[j]
 
-            img = images[_id][:y_sizes[j], :x_sizes[j]]
+            img = images[_id][y_shift:, x_shift:]
         r_images.append(img)
     return r_images
 
@@ -125,11 +125,11 @@ def crop_images_scan_auto(images, ids, x_sizes, y_sizes):
     r_images = []
     for j, _id in enumerate(ids):
         if _id == 'zeros':
-            img = np.zeros((y_sizes, x_sizes[j]), dtype=np.uint16)
+            img = np.zeros((y_sizes[j], x_sizes[j]), dtype=np.uint16)
         else:
-            #x_shift = default_img_shape[1] - x_sizes[j]
-            #y_shift = default_img_shape[0] - y_sizes
-            img = images[_id][:y_sizes, :x_sizes[j]]
+            x_shift = default_img_shape[1] - x_sizes[j]
+            y_shift = default_img_shape[0] - y_sizes[j]
+            img = images[_id][y_shift:, x_shift:]
 
         r_images.append(img)
 
@@ -140,10 +140,10 @@ def stitch_images(images, ids, x_size, y_size, scan_mode):
     """ Stitch cropped images by concatenating them horizontally and vertically """
     if scan_mode == 'auto':
         plane_width = sum(x_size[0])
-        plane_height = sum(y_size)
+        plane_height = sum([row[0] for row in y_size])
         res = np.zeros((plane_height, plane_width), dtype=np.uint16)
         nrows = len(y_size)
-        y_pos_plane = list(np.cumsum(y_size))
+        y_pos_plane = list(np.cumsum([row[0] for row in y_size]))
         y_pos_plane.insert(0, 0)
 
         for row in range(0, nrows):

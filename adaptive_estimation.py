@@ -1,6 +1,8 @@
 import numpy as np
 import pandas as pd
 import cv2 as cv
+from copy import deepcopy
+from itertools import chain
 #from skimage.feature import register_translation
 np.set_printoptions(suppress=True)  # use normal numeric notation instead of exponential
 pd.set_option('display.width', 1000)
@@ -111,7 +113,7 @@ class AdaptiveShiftEstimation:
                 elif mode == 'vertical':
                     overlap = self._vertical_overlap
 
-                res.iloc[i] = self.find_pairwise_shift(images[img1], images[img2], overlap, mode)
+                res.iloc[i + 1] = self.find_pairwise_shift(images[img1], images[img2], overlap, mode)
 
         return res
 
@@ -123,7 +125,7 @@ class AdaptiveShiftEstimation:
         for i in range(0, nrows):
             x_size.iloc[i,:] = self.find_shift_series(images, ids.iloc[i, :], 'horizontal')
         x_size = self.use_median(x_size, axis=0)
-        x_size.iloc[:, ncols-1] = self._default_image_shape[1]
+        x_size.iloc[:, 0] = self._default_image_shape[1]
         
         col_means = list(x_size.mean(axis=0))
         for i in range(0, ncols):
@@ -140,7 +142,7 @@ class AdaptiveShiftEstimation:
         for i in range(0, ncols):
             y_size.iloc[:, i] = self.find_shift_series(images, ids.iloc[:, i], 'vertical')
         y_size = self.use_median(y_size, axis=1)
-        y_size.iloc[nrows-1, :] = self._default_image_shape[0]
+        y_size.iloc[0, :] = self._default_image_shape[0]
         
         row_means = list(y_size.mean(axis=1))
         for i in range(0, nrows):
@@ -151,40 +153,50 @@ class AdaptiveShiftEstimation:
 
     # ----------- Estimation of auto scanned images -----------------
 
-    def estimate_sizes_scan_auto(self, images, image_sizes):
-        # get maximum row width calculated from microscope coordinates
-        # it will serve as initial estimation of zero padding for the right side of the image
-
-
+    def estimate_sizes_scan_auto(self, images, micro_img_sizes):
+        # size from microscope xml metadata
+        micro_ids = []
+        micro_x_sizes = []
+        micro_y_sizes = []
+        for row in micro_img_sizes:
+            micro_x_sizes.append([i[0] for i in row])
+            micro_y_sizes.append([i[1] for i in row])
+            micro_ids.append([i[2] for i in row])
         # estimate row width and height
-        x_sizes = []
-        y_sizes = []
-        image_rows = []
+        est_x_sizes = []
+        est_y_sizes = [self._default_image_shape[0]]
 
-        nrows = len(image_sizes)
+        nrows = len(micro_ids)
         for row in range(0, nrows):
-            print('row', row)
 
-            this_row_ids = [i[2] for i in image_sizes[row]]
-            this_row_x_sizes_from_micro = [i[0] for i in image_sizes[row]]
+            this_row_ids = micro_ids[row]
+            this_row_x_sizes_from_micro = micro_x_sizes[row]
             this_row_x_sizes = self.find_translation_x_scan_auto(images, this_row_ids, this_row_x_sizes_from_micro)
-            x_sizes.append(this_row_x_sizes)
+            est_x_sizes.append(this_row_x_sizes)
 
-        max_row_width = max([sum(row) for row in x_sizes])
+        max_row_width = max([sum(row) for row in est_x_sizes])
 
-        for row in range(0, len(x_sizes)):
-            x_sizes[row][-1] += (max_row_width - sum(x_sizes[row]))
+        for row in range(0, len(est_x_sizes)):
+            est_x_sizes[row][-1] += (max_row_width - sum(est_x_sizes[row]))
+
+        x_sizes = self.remapping_micro_param(micro_x_sizes, est_x_sizes, mode='x')
+
         for row in range(0, nrows - 1):
-            this_row_ids = [i[2] for i in image_sizes[row]]
-            next_row_ids = [i[2] for i in image_sizes[row + 1]]
+            this_row_ids = micro_ids[row]
+            next_row_ids = micro_ids[row + 1]
             this_row_x_sizes = x_sizes[row]
             next_row_x_sizes = x_sizes[row + 1]
-            row1 = self.stitch_images_x_scan_auto(images, this_row_ids, this_row_x_sizes)
-            row2 = self.stitch_images_x_scan_auto(images, next_row_ids, next_row_x_sizes)
-            print(row, row1.shape, row2.shape)
-            this_row_y_size = int(round(self.find_translation_y_scan_auto(row1, row2)))
-            y_sizes.append(this_row_y_size)
+            this_row = self.stitch_images_x_scan_auto(images, this_row_ids, this_row_x_sizes)
+            next_row = self.stitch_images_x_scan_auto(images, next_row_ids, next_row_x_sizes)
+            print(row, this_row.shape, next_row.shape)
+            this_row_y_size = int(round(self.find_translation_y_scan_auto(this_row, next_row)))
+            est_y_sizes.append(this_row_y_size)
 
+        y_sizes_arr = []
+        for row in range(0, len(est_x_sizes)):
+            y_sizes_arr.append( [est_y_sizes[row]] * len(est_x_sizes[row]) )
+
+        y_sizes = self.remapping_micro_param(micro_y_sizes, y_sizes_arr, mode='y')
         return x_sizes, y_sizes
 
     def find_translation_x_scan_auto(self, images, ids, x_sizes):
@@ -199,7 +211,10 @@ class AdaptiveShiftEstimation:
                 img1 = ids[i]
                 img2 = ids[i + 1]
 
-                res[i] = int(round(self.find_pairwise_shift(images[img1], images[img2], self._horizontal_overlap, 'horizontal')))
+                res[i + 1] = int(round(self.find_pairwise_shift(images[img1], images[img2], self._horizontal_overlap, 'horizontal')))
+
+                if ids[i - 1] == 'zeros':
+                    res[i] = self._default_image_shape[1]
 
         return res
 
@@ -210,8 +225,8 @@ class AdaptiveShiftEstimation:
             if _id == 'zeros':
                 img = np.zeros((self._default_image_shape[0], x_sizes[j]), dtype=np.uint16)
             else:
-                #x_shift = self._default_image_shape[1] - x_sizes[j]
-                img = images[_id][:, x_sizes[j]:]
+                x_shift = self._default_image_shape[1] - x_sizes[j]
+                img = images[_id][:, x_shift:]
 
             r_images.append(img)
         # stitching
@@ -223,3 +238,37 @@ class AdaptiveShiftEstimation:
         y_size = self.find_pairwise_shift(img1, img2, self._vertical_overlap, 'vertical')
         return y_size
 
+    def remapping_micro_param(self, micro_arr, est_arr, mode):
+        result_arr = deepcopy(micro_arr)
+        corr = []
+        for i in range(0, len(est_arr)):
+            corr.append(list(zip(result_arr[i], est_arr[i])))
+
+        flat_cor = list(chain.from_iterable(corr))
+
+        ref_dict = {}
+        for t in flat_cor:
+            if t[0] in ref_dict:
+                ref_dict[t[0]] += [t[1]]
+            else:
+                ref_dict[t[0]] = [t[1]]
+
+        corr_dict = {}
+        for key, val in ref_dict.items():
+            if len(val) > 1:
+                corr_dict[key] = int(round(np.median(val)))
+            else:
+                corr_dict[key] = val[0]
+
+        for row in range(0, len(result_arr)):
+            for x in range(0, len(result_arr[row])):
+                this_size = result_arr[row][x]
+                if this_size in corr_dict:
+                    result_arr[row][x] = corr_dict[this_size]
+
+        if mode == 'x':
+            max_row_width = max([sum(row) for row in result_arr])
+            for row in range(0, len(result_arr)):
+                result_arr[row][-1] += (max_row_width - sum(result_arr[row]))
+
+        return result_arr

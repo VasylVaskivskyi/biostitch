@@ -31,9 +31,11 @@ This program uses microscope coordinates from `Index.idx.xml` to stitch images. 
 
 **`--load_param`**     specify folder that contains the following csv files: image_ids.csv, x_size.csv, y_sizes.csv, that contain previously estimated parameters
 
+**`--scan`**    specify type of microscope scanning used (manual or auto)
+
 ## Example usage
 
-`python image_stitcher --xml "/path/to/dataset/Images/Index.idx.xml" --img_dir "/path/to/dataset/Images/" --out_dir "/path/to/out/directory/" --mode "maxz" --adaptive --overlap 0.1 0.1 --preview_channel "DAPI" --stitch_channels "DAPI" "ALEXA 568" --channels_to_correct_illumination "DAPI"`
+`python image_stitcher --xml "/path/to/dataset/Images/Index.idx.xml" --img_dir "/path/to/dataset/Images/" --out_dir "/path/to/out/directory/" --scane "manual" --mode "maxz" --adaptive --overlap 0.1 0.1 --make_preview --stitch_channels "DAPI" "ALEXA 568" --channels_to_correct_illumination "DAPI"`
 
 
 You start by telling python to run the folder `image_stitcher`, then you have to specify paths where Index.idx.xml (`--xml`) and images (`--img_dir`) are stored, and (`--out_dir`) where you want to save the stitched image. If output directory does not exist it will be created. The output file will have the name from the xml file tag name.
@@ -48,7 +50,7 @@ If you want to select specific channels to be stitched you can specify them in `
 
 If you want to correct uneven illumination in one of the channels you can specify it in the `--channels_to_correct_illumination` command, default value is apply correction to all channels. You can provide `none` to prevent applying illumination correction.
 
-Finally, if you want to save estimated stitching parameters use `--save_param` flag, and if you want to load previously estimated files use `--load_param` specifying path to the directory which contains 3 csv files: image_ids.csv, x_sizes.csv, y_sizes.csv
+Finally, if you want to save estimated stitching parameters use `--save_params` flag, and if you want to load previously estimated files use `--load_params` specifying path to the directory which contains 3 csv files: image_ids.csv, x_sizes.csv, y_sizes.csv
 
 
 ## Dependencies

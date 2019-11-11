@@ -5,9 +5,6 @@ import argparse
 import tifffile as tif
 from tifffile import TiffWriter
 import gc
-import re
-import numpy as np
-import pandas as pd
 from datetime import datetime
 import os
 import cv2 as cv 
@@ -16,7 +13,7 @@ from ome_tags import create_ome_metadata, get_channel_metadata
 from adaptive_estimation import AdaptiveShiftEstimation
 from image_positions import load_necessary_xml_tags, get_image_sizes_auto, get_image_sizes_manual, get_image_paths_for_fields_per_channel, get_image_paths_for_planes_per_channel
 from image_processing import stitch_z_projection, create_z_projection_for_fov, stitch_series_of_planes, stitch_plane2
-
+from saving_loading import load_param, save_param
 
 def main():
 
@@ -46,7 +43,7 @@ def main():
                         help='will save parameters estimated during stitching into 3 csv files (image_ids, x_sizes, y sizes)')
     parser.add_argument('--load_param', type=str, default='none',
                         help='specify folder that contais the following csv files: image_ids.csv, x_size.csv, y_sizes.csv, that contain previously estimated parameters')
-    parser.add_argument('--scan_mode', type=str, default='none', required=True,
+    parser.add_argument('--scan', type=str, default='none', required=True,
                         help='specify scanning mode (auto or manual)')
     args = parser.parse_args()
 
@@ -60,10 +57,9 @@ def main():
     stitching_mode = args.mode
     is_adaptive = args.adaptive
     overlap = args.overlap
-    save_param = args.save_param
+    do_save_param = args.save_param
     param_path = args.load_param
-
-    scan_mode = args.scan_mode
+    scan = args.scan
 
     # check if specified directories exist
     if not os.path.isdir(img_dir):
@@ -88,7 +84,7 @@ def main():
     channel_names = list(planes_path_list.keys())
     channel_ids = {ch: i for i, ch in enumerate(channel_names)}
 
-# ----------- checking if parsed arguments ---------- #
+# ----------- checking parsed arguments ---------- #
     if stitch_only_ch == ['all']:
         if reference_channel == 'none':
             reference_channel = channel_names[0]
@@ -114,19 +110,19 @@ def main():
     elif ill_cor_ch == ['none']:
         ill_cor_ch = []
 
-# ----------- loading previously estimated stitching parameters from files ------------- #
+# ----------- estimating image sizes ------------- #
     if param_path == 'none':
-        if scan_mode == 'auto':
-            img_sizes = get_image_sizes_auto(tag_Images, reference_channel)
-            parameters = img_sizes
+        if scan == 'auto':
+            micro_img_sizes = get_image_sizes_auto(tag_Images, reference_channel)
+            parameters = micro_img_sizes
             ids = []
             x_size = []
             y_size = []
-            for row in img_sizes:
+            for row in micro_img_sizes:
                 ids.append([i[2] for i in row])
                 x_size.append([i[0] for i in row])
                 y_size.append(row[0][1])
-        elif scan_mode == 'manual':
+        elif scan == 'manual':
             ids, x_size, y_size = get_image_sizes_manual(tag_Images, reference_channel)
             parameters = ids
 
@@ -136,73 +132,27 @@ def main():
             estimator = AdaptiveShiftEstimation()
             estimator.horizontal_overlap_percent = overlap[0]
             estimator.vertical_overlap_percent = overlap[1]
-            x_size, y_size = estimator.estimate(z_max_img_list, parameters, scan_mode)
+            x_size, y_size = estimator.estimate(z_max_img_list, parameters, scan)
             del z_max_img_list
+            gc.collect()
     else:
+        # ----------- loading previously estimated stitching parameters from files ------------- #
         print('using parameters from loaded files')
         if not param_path.endswith('/'):
             param_path = param_path + '/'
-
-        if scan_mode == 'auto':
-            ids = []
-            with open(param_path + 'image_ids.txt') as f:
-                for line in f.readlines():
-                    line = re.sub(r"[\n\s']+", '', line).split(',')
-                    line = [int(i) if i != 'zeros' else i for i in line]
-                    ids.append(line)
-            x_size = []
-            with open(param_path + 'x_sizes.txt') as f:
-                for line in f.readlines():
-                    line = re.sub(r"[\n\s']+", '', line).split(',')
-                    line = [int(i) if i != 'zeros' else i for i in line]
-                    x_size.append(line)
-            y_size = []
-            with open(param_path + 'y_sizes.txt') as f:
-                line = f.read()
-                line = re.sub(r"[\n\s']+", '', line).split(',')
-                line = [int(i) if i != 'zeros' else i for i in line]
-                y_size = line
-        elif scan_mode == 'manual':
-            ids = pd.read_csv(param_path + 'image_ids.csv', index_col=0, header='infer', dtype='object')
-            x_size = pd.read_csv(param_path + 'x_sizes.csv', index_col=0, header='infer', dtype='int64')
-            y_size = pd.read_csv(param_path + 'y_sizes.csv', index_col=0, header='infer', dtype='int64')
-            # convert column names to int
-            ids.columns = ids.columns.astype(int)
-            x_size.columns = x_size.columns.astype(int)
-            y_size.columns = y_size.columns.astype(int)
-            # convert data to int where possible
-            for j in ids.columns:
-                for i in ids.index:
-                    try:
-                        val = ids.loc[i, j]
-                        val = int(val)
-                        ids.loc[i, j] = val
-                    except ValueError:
-                        pass
+        ids, x_size, y_size = load_param(param_path, scan)
 
 # ---------- saving estimated parameters to files ------------- #
-    if save_param:
+    if do_save_param:
         print('saving_parameters')
-        if scan_mode == 'auto':
-            with open(out_dir + 'image_ids.txt', 'w') as f:
-                for row in ids:
-                    f.write(','.join(str(i) for i in row) + '\n')
-            with open(out_dir + 'x_sizes.txt', 'w') as f:
-                for row in x_size:
-                    f.write(','.join(str(i) for i in row) + '\n')
-            with open(out_dir + 'y_sizes.txt', 'w') as f:
-                f.write(','.join(str(i) for i in y_size) + '\n')
-        elif scan_mode == 'manual':
-            ids.to_csv(out_dir + 'image_ids.csv')
-            x_size.to_csv(out_dir + 'x_sizes.csv')
-            y_size.to_csv(out_dir + 'y_sizes.csv')
+        save_param(out_dir, scan, ids, x_size, y_size)
 
 # -------- generating ome metadata ------------ #
     # width and height of single plain
-    if scan_mode == 'auto':
+    if scan == 'auto':
         width = sum(x_size[0])
-        height = sum(y_size)
-    elif scan_mode == 'manual':
+        height = sum([row[0] for row in y_size])
+    elif scan == 'manual':
         width = sum(x_size.iloc[0, :])
         height = sum(y_size.iloc[:, 0])
     nplanes = len(planes_path_list[reference_channel])
@@ -217,15 +167,15 @@ def main():
 # ---------- image stitching ------------- #
     if preview_ch != 'none':
         print('generating max z preview')
-        z_proj = stitch_z_projection(preview_ch, fields_path_list, ids, x_size, y_size, False, scan_mode)
+        z_proj = stitch_z_projection(preview_ch, fields_path_list, ids, x_size, y_size, False, scan)
         preview_meta = {preview_ch: final_meta[preview_ch]}
         ome_preview = create_ome_metadata(tag_Name, width, height, 1, 1, 1,
                                           'uint16', preview_meta, tag_Images, tag_MeasurementStartTime)
         tif.imwrite(out_dir + 'preview.tif', z_proj, description=ome_preview)
         print('preview is available at ' + out_dir + 'preview.tif')
         del z_proj
-        gc.collect()
 
+    gc.collect()
     if stitching_mode == 'regular_channel':
         final_path_reg = out_dir + tag_Name + '.tif'
         with TiffWriter(final_path_reg, bigtiff=True) as TW:
@@ -238,7 +188,7 @@ def main():
                 else:
                     do_illum_cor = False
                                
-                TW.save(stitch_series_of_planes(channel, planes_path_list, ids, x_size, y_size, do_illum_cor, scan_mode),
+                TW.save(stitch_series_of_planes(channel, planes_path_list, ids, x_size, y_size, do_illum_cor, scan),
                         photometric='minisblack', contiguous=True, description=ome)
     
     elif stitching_mode == 'regular_plane':
@@ -259,7 +209,7 @@ def main():
                     
                 for j, plane in enumerate(planes_path_list[channel]):
                     print('{0}plane {1}/{2}'.format(delete, j+1, nplanes), end='', flush=True)
-                    TW.save(stitch_plane2(plane, clahe, ids, x_size, y_size, do_illum_cor, scan_mode),
+                    TW.save(stitch_plane2(plane, clahe, ids, x_size, y_size, do_illum_cor, scan),
                             photometric='minisblack', contiguous=True, description=ome)
                 
     elif stitching_mode == 'maxz':
@@ -274,7 +224,7 @@ def main():
                 else:
                     do_illum_cor = False
                 
-                TW.save(stitch_z_projection(channel, fields_path_list, ids, x_size, y_size, do_illum_cor, scan_mode),
+                TW.save(stitch_z_projection(channel, fields_path_list, ids, x_size, y_size, do_illum_cor, scan),
                         photometric='minisblack', contiguous=True, description=ome_maxz)
 
 # ----------- saving ome metadata to a separate XML file ----------- #

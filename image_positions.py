@@ -153,7 +153,7 @@ def get_image_positions(tag_Images, main_channel):
     relative_x = create_relative_position(x_pos, center_field_x_pos)
     relative_y = create_relative_position(y_pos, center_field_y_pos)
 
-    # combine x and y coordinates
+    # combine x nad y coordinates
     id_full_range = []
 
     for i in relative_y:
@@ -212,10 +212,9 @@ def get_image_positions(tag_Images, main_channel):
 def get_image_sizes_manual(tag_Images, main_channel):
     id_df, x_df, y_df = get_image_positions(tag_Images, main_channel)
     nrows, ncols = id_df.shape
-
+    # pd.options.display.width = 0
     x_size = pd.DataFrame(columns=x_df.columns, index=x_df.index)
     y_size = pd.DataFrame(columns=y_df.columns, index=y_df.index)
-
 
     # assuming that all images are of the same size, so default image size from first image in xml are taken
     default_img_width = int(tag_Images[0].find('ImageSizeX').text)
@@ -269,26 +268,24 @@ def get_image_sizes_auto(tag_Images, main_channel):
 
     y_range = set(y_pos)
     y_range_sorted = sorted(y_range)
-    y_sizes = []
+    y_sizes = [default_img_height]
 
     for i in range(0, len(y_range_sorted)-1):
         y_sizes.append(abs(y_range_sorted[i] - y_range_sorted[i+1]))
-    y_sizes.append(default_img_height)
 
-    # compute z-score of y_sizes to later merge hanging pieces
     z_score = []
     y_mean = np.mean(y_sizes)
     y_std = np.std(y_sizes) + 0.00001
     for i in y_sizes:
         z_score.append( abs(i - y_mean) / y_std )
 
-    # image coordinates arranged in rows by same y coordinate
+    # image coordinates arranged in rows by same y-coordinate
     row_list = []
     for i in range(0, len(y_range_sorted)):
         row = [j for j in img_pos if j[1] == y_range_sorted[i]]
         row_list.append(row)
 
-    # for each row, if z-score of y size is > 1, then merge it to previous row
+    # for each row, if z-score of y-size is > 1, then merge it to previous row
     rows_to_remove = []
     for i in range(1, len(row_list)):
         if z_score[i] > 1:
@@ -299,7 +296,6 @@ def get_image_sizes_auto(tag_Images, main_channel):
             row_list[i - 1] = sorted(row_list[i - 1], key=lambda x: x[0])
             rows_to_remove.append(i)
 
-    # remove rows that were merged
     row_list = [row for i, row in enumerate(row_list) if i not in rows_to_remove]
     y_sizes = [y for i, y in enumerate(y_sizes) if i not in rows_to_remove]
 
@@ -308,36 +304,32 @@ def get_image_sizes_auto(tag_Images, main_channel):
     row_sizes = []
     for row in range(0, len(row_list)):
         img_coords = [row[0] for row in row_list[row]]
-        img_ids = [int(row[2]) - 1 for row in row_list[row]]  # int(row[2]) - 1 because indices in xml file start from 1
+        img_ids = [int(row[2]) - 1 for row in row_list[row]]
 
-        # image rows are in snake like order
-        # so lists with position and id information need to be reversed
         if img_coords[0] < img_coords[-1]:
             pass
         elif img_coords[0] > img_coords[-1]:
             img_coords.reverse()
             img_ids.reverse()
 
-        # start each row with zero padding
-        this_row_img_sizes = [(img_coords[0], 'zeros')]
+        # start each row with zero padding and full width image
+        img_size = [(img_coords[0], 'zeros'), (default_img_width, img_ids[0])]
         # detect gaps between images
-        for i in range(0, len(img_coords) - 1):
-            size = img_coords[i + 1] - img_coords[i]
-            # if difference between two adjacent pictures (diff) is bigger than width of default picture
-            # then consider this part as a gap, subtract img size from diff, the rest is the size of a gap
+        for i in range(1, len(img_coords)):
+            size = img_coords[i] - img_coords[i - 1]
+            # if difference between two adjacent pictures is bigger than width of default picture,
+            # then consider this part as a gap, subtract img size from it, and consider the rest as size of a gap
             if size > default_img_width:
                 image_size = default_img_width
                 gap_size = size - default_img_width
-                this_row_img_sizes.extend([(image_size, img_ids[i]), (gap_size, 'zeros')])
+                img_size.extend([(gap_size, 'zeros'), (image_size, img_ids[i])])
             else:
-                this_row_img_sizes.append((size, img_ids[i]))
+                img_size.append((size, img_ids[i]))
 
-        this_row_img_sizes.append((default_img_width, img_ids[-1]))
-
-        row_width = sum([i[0] for i in this_row_img_sizes])
+        row_width = sum([i[0] for i in img_size])
         row_sizes.append(row_width)
 
-        img_sizes.append(this_row_img_sizes)
+        img_sizes.append(img_size)
 
     # add zero padding to the end of each row
     max_width = max(row_sizes)
