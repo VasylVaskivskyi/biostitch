@@ -88,6 +88,7 @@ class AdaptiveShiftEstimation:
 
     def find_pairwise_shift(self, img1, img2, overlap, mode):
         if mode == 'horizontal':
+            print( overlap)
             img1_overlap = img1.shape[1] - overlap
             img2_overlap = overlap
             part1 = cv.normalize(img1[:, img1_overlap:], None, 0, 1, cv.NORM_MINMAX, cv.CV_32F)
@@ -112,7 +113,7 @@ class AdaptiveShiftEstimation:
 
         return pairwise_shift
 
-    def find_shift_series(self, images, id_series, mode):
+    def find_shift_series(self, images, id_series, overlap_series, mode):
         ids = id_series.copy()
         res = id_series.copy()
         res[:] = np.nan
@@ -124,13 +125,9 @@ class AdaptiveShiftEstimation:
             else:
                 img1 = ids.iloc[i]
                 img2 = ids.iloc[i + 1]
-
-                if mode == 'horizontal':
-                    overlap = self._horizontal_overlap
-                elif mode == 'vertical':
-                    overlap = self._vertical_overlap
-
-                res.iloc[i + 1] = self.find_pairwise_shift(images[img1], images[img2], overlap, mode)
+                print(ids)
+                print(i, i+1)
+                res.iloc[i + 1] = self.find_pairwise_shift(images[img1], images[img2], overlap_series.iloc[i + 1], mode)
 
         return res
 
@@ -140,7 +137,8 @@ class AdaptiveShiftEstimation:
         nrows, ncols = x_size.shape
 
         for i in range(0, nrows):
-            x_size.iloc[i,:] = self.find_shift_series(images, ids.iloc[i, :], 'horizontal')
+            print('row', i)
+            x_size.iloc[i,:] = self.find_shift_series(images, ids.iloc[i, :], self._x_overlap.iloc[i, :], 'horizontal')
         x_size = self.use_median(x_size, axis=0)
         x_size.iloc[:, 0] = self._default_image_shape[1]
         
@@ -157,7 +155,7 @@ class AdaptiveShiftEstimation:
         nrows, ncols = y_size.shape
 
         for i in range(0, ncols):
-            y_size.iloc[:, i] = self.find_shift_series(images, ids.iloc[:, i], 'vertical')
+            y_size.iloc[:, i] = self.find_shift_series(images, ids.iloc[:, i], self._y_overlap.iloc[:, i], 'vertical')
         y_size = self.use_median(y_size, axis=1)
         y_size.iloc[0, :] = self._default_image_shape[0]
         
@@ -212,16 +210,15 @@ class AdaptiveShiftEstimation:
 
         self._x_overlap = x_overlap
         self._y_overlap = y_overlap
+        print(x_overlap, '\n')
+        print(y_overlap, '\n')
 
-    def estimate_sizes_scan_auto(self, images, micro_img_sizes):
+    def estimate_sizes_scan_auto(self, images):
         # size from microscope xml metadata
-        micro_ids = []
-        micro_x_sizes = []
-        micro_y_sizes = []
-        for row in micro_img_sizes:
-            micro_x_sizes.append([i[0] for i in row])
-            micro_y_sizes.append([i[1] for i in row])
-            micro_ids.append([i[2] for i in row])
+        micro_ids = self._micro_ids
+        micro_x_sizes = self._micro_x_size
+        micro_y_sizes = self._micro_y_size
+
         # estimate row width and height
         est_x_sizes = []
         est_y_sizes = [self._default_image_shape[0]]
@@ -231,7 +228,7 @@ class AdaptiveShiftEstimation:
 
             this_row_ids = micro_ids[row]
             this_row_x_sizes_from_micro = micro_x_sizes[row]
-            this_row_x_sizes = self.find_translation_x_scan_auto(images, this_row_ids, this_row_x_sizes_from_micro)
+            this_row_x_sizes = self.find_translation_x_scan_auto(images, this_row_ids, this_row_x_sizes_from_micro, row)
             est_x_sizes.append(this_row_x_sizes)
 
         max_row_width = max([sum(row) for row in est_x_sizes])
@@ -253,7 +250,7 @@ class AdaptiveShiftEstimation:
             for comb in valid_combinations:
                 this_row_img_id = comb[0]
                 next_row_img_id = comb[1]
-                next_row_y_size.append(self.find_translation_y_scan_auto(images[this_row_img_id], images[next_row_img_id]))
+                next_row_y_size.append(self.find_translation_y_scan_auto(images[this_row_img_id], images[next_row_img_id], row))
             est_y_sizes.append(int(round(np.median(next_row_y_size))))
 
         y_sizes_arr = []
@@ -265,21 +262,21 @@ class AdaptiveShiftEstimation:
         return x_sizes, y_sizes
 
     def find_translation_x_scan_auto(self, images, ids, x_sizes, row):
-        res = [0] * len(ids)
 
+        res = [0] * len(ids)
+        # in each row first picture is zero padding
         for i in range(0, len(ids) - 1):
             if ids[i] == 'zeros':
                 res[i] = x_sizes[i]
+            elif i > 0 and ids[i - 1] == 'zeros':
+                res[i] = self._default_image_shape[1]
             elif ids[i + 1] == 'zeros':
                 res[i + 1] = x_sizes[i + 1]
             else:
                 img1 = ids[i]
                 img2 = ids[i + 1]
 
-                res[i + 1] = int(round(self.find_pairwise_shift(images[img1], images[img2], self._x_overlap[row][i+1], 'horizontal')))
-
-                if ids[i - 1] == 'zeros':
-                    res[i] = self._default_image_shape[1]
+                res[i + 1] = int(round(self.find_pairwise_shift(images[img1], images[img2], self._x_overlap[row][i + 1], 'horizontal')))
 
         return res
 
@@ -300,24 +297,32 @@ class AdaptiveShiftEstimation:
         return res
 
     def find_translation_y_scan_auto(self, img1, img2, row):
+        # overlap is the same across the row, so we take only first element of the row
         y_size = self.find_pairwise_shift(img1, img2, self._y_overlap[row][0], 'vertical')
         return y_size
 
     def remapping_micro_param(self, micro_arr, est_arr, mode):
         result_arr = deepcopy(micro_arr)
+
+        # create list of tuples with corresponding values
+        # from list with microscopy sizes and estimated sizes
         corr = []
         for i in range(0, len(est_arr)):
             corr.append(list(zip(result_arr[i], est_arr[i])))
 
-        flat_cor = list(chain.from_iterable(corr))
+        # flatten the list of the lists
+        flat_corr = list(chain.from_iterable(corr))
 
+        # create reference dictionary, where keys are micro sizes and values are estimated sizes
+        # in such way each microscopy size can have several estimated sizes
         ref_dict = {}
-        for t in flat_cor:
-            if t[0] in ref_dict:
-                ref_dict[t[0]] += [t[1]]
+        for tup in flat_corr:
+            if tup[0] in ref_dict:
+                ref_dict[tup[0]] += [tup[1]]
             else:
-                ref_dict[t[0]] = [t[1]]
+                ref_dict[tup[0]] = [tup[1]]
 
+        # take median of values for each key
         corr_dict = {}
         for key, val in ref_dict.items():
             if len(val) > 1:
@@ -325,12 +330,14 @@ class AdaptiveShiftEstimation:
             else:
                 corr_dict[key] = val[0]
 
+        # replace values in the list of microscopy sizes with medians of estimated sizes
         for row in range(0, len(result_arr)):
             for x in range(0, len(result_arr[row])):
                 this_size = result_arr[row][x]
                 if this_size in corr_dict:
                     result_arr[row][x] = corr_dict[this_size]
 
+        # for x sizes update right zero padding
         if mode == 'x':
             max_row_width = max([sum(row) for row in result_arr])
             for row in range(0, len(result_arr)):

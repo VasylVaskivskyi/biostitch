@@ -37,8 +37,6 @@ def main():
                         help='regular_channel: produce z-stacks, save by channel.\nregular_plane: produce z-stacks, save by plane.\nmaxz: produce max z-projections instead of z-stacks.')
     parser.add_argument('--adaptive', action='store_true',
                         help='turn on adaptive estimation of image translation')
-    parser.add_argument('--overlap', type=float, nargs='+', default=[0.1, 0.1],
-                        help='two values that correspond to horizontal and vertical overlap of images in fractions of 1. Default overalp: horizontal 0.1, vertical 0.1.')
     parser.add_argument('--save_param', action='store_true', default=False,
                         help='will save parameters estimated during stitching into 3 csv files (image_ids, x_sizes, y sizes)')
     parser.add_argument('--load_param', type=str, default='none',
@@ -56,7 +54,6 @@ def main():
     ill_cor_ch = args.channels_to_correct_illumination
     stitching_mode = args.mode
     is_adaptive = args.adaptive
-    overlap = args.overlap
     do_save_param = args.save_param
     param_path = args.load_param
     scan = args.scan
@@ -118,7 +115,6 @@ def main():
     if param_path == 'none':
         if scan == 'auto':
             micro_img_sizes = get_image_sizes_auto(tag_Images, reference_channel)
-            parameters = micro_img_sizes
             ids = []
             x_size = []
             y_size = []
@@ -126,17 +122,19 @@ def main():
                 ids.append([i[2] for i in row])
                 x_size.append([i[0] for i in row])
                 y_size.append(row[0][1])
+
         elif scan == 'manual':
             ids, x_size, y_size = get_image_sizes_manual(tag_Images, reference_channel)
-            parameters = ids
 
         if is_adaptive:
             print('estimating image translation')
             z_max_img_list = create_z_projection_for_fov(reference_channel, fields_path_list)
             estimator = AdaptiveShiftEstimation()
-            estimator.horizontal_overlap_percent = overlap[0]
-            estimator.vertical_overlap_percent = overlap[1]
-            x_size, y_size = estimator.estimate(z_max_img_list, parameters, scan)
+            estimator.scan = scan
+            estimator.micro_ids = ids
+            estimator.micro_x_size = x_size
+            estimator.micro_y_size = y_size
+            x_size, y_size = estimator.estimate(z_max_img_list)
             del z_max_img_list
             gc.collect()
     else:
