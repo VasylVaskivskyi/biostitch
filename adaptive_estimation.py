@@ -180,17 +180,21 @@ class AdaptiveShiftEstimation:
             est_x_sizes[row][-1] += (max_row_width - sum(est_x_sizes[row]))
 
         x_sizes = self.remapping_micro_param(micro_x_sizes, est_x_sizes, mode='x')
-
+        
+        # iteratively compare images from two rows
+        # use only combinations without zero padding or gap images
         for row in range(0, nrows - 1):
             this_row_ids = micro_ids[row]
             next_row_ids = micro_ids[row + 1]
-            this_row_x_sizes = x_sizes[row]
-            next_row_x_sizes = x_sizes[row + 1]
-            this_row = self.stitch_images_x_scan_auto(images, this_row_ids, this_row_x_sizes)
-            next_row = self.stitch_images_x_scan_auto(images, next_row_ids, next_row_x_sizes)
-            print(row, this_row.shape, next_row.shape)
-            this_row_y_size = int(round(self.find_translation_y_scan_auto(this_row, next_row)))
-            est_y_sizes.append(this_row_y_size)
+            combinations = zip(this_row_ids, nex_row_ids)
+            valid_combinations = [comb for comb in combinations if 'zeros' not in comb]
+            
+            next_row_y_size = []
+            for comb in valid_combinations:
+                this_row_img_id = comb[0]
+                next_row_img_id = comb[1]
+                next_row_y_size.append(self.find_translation_y_scan_auto(images[this_row_img_id], images[next_row_img_id]))
+            est_y_sizes.append(int(round(np.median(next_row_y_size))))
 
         y_sizes_arr = []
         for row in range(0, len(est_x_sizes)):
