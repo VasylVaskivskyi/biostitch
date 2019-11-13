@@ -110,6 +110,10 @@ def main():
     elif ill_cor_ch == ['none']:
         ill_cor_ch = []
 
+    available_scan_modes = ('auto', 'manual')
+    if scan not in available_scan_modes:
+        raise ValueError('Incorrect scan mode. Available scan modes ' + ', '.join(available_scan_modes))
+
 # ----------- estimating image sizes ------------- #
     if param_path == 'none':
         if scan == 'auto':

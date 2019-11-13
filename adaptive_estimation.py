@@ -10,41 +10,58 @@ pd.set_option('display.width', 1000)
 
 class AdaptiveShiftEstimation:
     def __init__(self):
-        self._horizontal_overlap_percent = 0.1
-        self._vertical_overlap_percent = 0.1
-        self._horizontal_overlap = 0
-        self._vertical_overlap = 0
+        self._scan = ''
+        self._micro_ids = None
+        self._micro_x_size = None
+        self._micro_y_size = None
         self._default_image_shape = (0, 0)
+        self._x_overlap = None
+        self._y_overlap = None
 
     @property
-    def horizontal_overlap_percent(self):
-        return self._horizontal_overlap_percent
+    def scan(self):
+        return self._scan
 
-    @horizontal_overlap_percent.setter
-    def horizontal_overlap_percent(self, value):
-        self._horizontal_overlap_percent = value
+    @scan.setter
+    def scan(self, value):
+        self._scan = value
 
     @property
-    def vertical_overlap_percent(self):
-        return self._vertical_overlap_percent
+    def micro_ids(self):
+        return self._micro_ids
 
-    @vertical_overlap_percent.setter
-    def vertical_overlap_percent(self, value):
-        self._vertical_overlap_percent = value
+    @micro_ids.setter
+    def micro_ids(self, value):
+        self._micro_ids = value
 
-    def estimate(self, images, parameters, scan_mode):
-        self._horizontal_overlap = int(round(images[0].shape[1] * self.horizontal_overlap_percent))
-        self._vertical_overlap = int(round(images[0].shape[0] * self.vertical_overlap_percent))
+    @property
+    def micro_x_size(self):
+        return self._micro_x_size
+
+    @micro_x_size.setter
+    def micro_x_size(self, value):
+        self._micro_x_size = value
+
+    @property
+    def micro_y_size(self):
+        return self._micro_x_size
+
+    @micro_y_size.setter
+    def micro_y_size(self, value):
+        self._micro_y_size = value
+
+    def estimate(self, images):
         self._default_image_shape = images[0].shape
-        if scan_mode == 'auto':
-            x_size, y_size = self.estimate_sizes_scan_auto(images, parameters)
-        elif scan_mode == 'manual':
-            x_size, y_size = self.estimate_image_sizes_scan_manual(images, parameters)
+        self.estimate_overlap()
+        if self._scan == 'auto':
+            x_size, y_size = self.estimate_sizes_scan_auto(images)
+        elif self._scan == 'manual':
+            x_size, y_size = self.estimate_image_sizes_scan_manual(images)
         return x_size, y_size
 
-    def estimate_image_sizes_scan_manual(self, images, ids):
-        x_size = self.find_translation_x(images, ids)
-        y_size = self.find_translation_y(images, ids)
+    def estimate_image_sizes_scan_manual(self, images):
+        x_size = self.find_translation_x(images, self._micro_ids)
+        y_size = self.find_translation_y(images, self._micro_ids)
         return x_size, y_size
 
     def use_median(self, df, axis):
@@ -153,6 +170,49 @@ class AdaptiveShiftEstimation:
 
     # ----------- Estimation of auto scanned images -----------------
 
+    def estimate_overlap(self):
+        # x overlap
+        def_shape = self._default_image_shape
+        ids = self._micro_ids
+
+        x_cor = int(round(def_shape[1] * 0.01))   # add 1 percent
+        y_cor = int(round(def_shape[0] * 0.01))  # add 1 percent
+
+        if self._scan == 'auto':
+            x_overlap = []
+            for i, row in enumerate(self._micro_x_size):
+                this_row_overlap = []
+                for j, el in enumerate(row):
+                    if ids[i][j] != 'zeros':
+                        this_row_overlap.append(x_cor + (def_shape[1] - el))
+                    else:
+                        this_row_overlap.append(0)
+                x_overlap.append(this_row_overlap)
+
+            # y overlap
+            y_overlap = []
+            for i, row in enumerate(self._micro_y_size):
+                this_row_overlap = []
+                for j, el in enumerate(row):
+                    if ids[i][j] != 'zeros':
+                        this_row_overlap.append(y_cor + (def_shape[0] - el))
+                    else:
+                        this_row_overlap.append(0)
+                y_overlap.append(this_row_overlap)
+
+        elif self._scan == 'manual':
+            # data frames
+            zeros = ids == 'zeros'
+            x_overlap = (def_shape[1] - self._micro_x_size) + x_cor
+            y_overlap = (def_shape[0] - self._micro_x_size) + y_cor
+
+            x_overlap[zeros] = 0
+            y_overlap[zeros] = 0
+
+
+        self._x_overlap = x_overlap
+        self._y_overlap = y_overlap
+
     def estimate_sizes_scan_auto(self, images, micro_img_sizes):
         # size from microscope xml metadata
         micro_ids = []
@@ -186,7 +246,7 @@ class AdaptiveShiftEstimation:
         for row in range(0, nrows - 1):
             this_row_ids = micro_ids[row]
             next_row_ids = micro_ids[row + 1]
-            combinations = zip(this_row_ids, nex_row_ids)
+            combinations = zip(this_row_ids, next_row_ids)
             valid_combinations = [comb for comb in combinations if 'zeros' not in comb]
             
             next_row_y_size = []
@@ -200,10 +260,11 @@ class AdaptiveShiftEstimation:
         for row in range(0, len(est_x_sizes)):
             y_sizes_arr.append( [est_y_sizes[row]] * len(est_x_sizes[row]) )
 
-        y_sizes = self.remapping_micro_param(micro_y_sizes, y_sizes_arr, mode='y')
+        #y_sizes = self.remapping_micro_param(micro_y_sizes, y_sizes_arr, mode='y')
+        y_sizes = y_sizes_arr
         return x_sizes, y_sizes
 
-    def find_translation_x_scan_auto(self, images, ids, x_sizes):
+    def find_translation_x_scan_auto(self, images, ids, x_sizes, row):
         res = [0] * len(ids)
 
         for i in range(0, len(ids) - 1):
@@ -215,7 +276,7 @@ class AdaptiveShiftEstimation:
                 img1 = ids[i]
                 img2 = ids[i + 1]
 
-                res[i + 1] = int(round(self.find_pairwise_shift(images[img1], images[img2], self._horizontal_overlap, 'horizontal')))
+                res[i + 1] = int(round(self.find_pairwise_shift(images[img1], images[img2], self._x_overlap[row][i+1], 'horizontal')))
 
                 if ids[i - 1] == 'zeros':
                     res[i] = self._default_image_shape[1]
@@ -238,8 +299,8 @@ class AdaptiveShiftEstimation:
 
         return res
 
-    def find_translation_y_scan_auto(self, img1, img2):
-        y_size = self.find_pairwise_shift(img1, img2, self._vertical_overlap, 'vertical')
+    def find_translation_y_scan_auto(self, img1, img2, row):
+        y_size = self.find_pairwise_shift(img1, img2, self._y_overlap[row][0], 'vertical')
         return y_size
 
     def remapping_micro_param(self, micro_arr, est_arr, mode):

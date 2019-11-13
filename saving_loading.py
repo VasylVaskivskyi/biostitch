@@ -45,8 +45,8 @@ def save_param(dir_path, scan, ids, x_size, y_size):
                     f.write(','.join(str(i) for i in row) + '\n')
 
         save_txt(dir_path + 'image_ids.txt', ids)
-        save_txt(dir_path + 'x_sizes.txt', ids)
-        save_txt(dir_path + 'y_sizes.txt', ids)
+        save_txt(dir_path + 'x_sizes.txt', x_size)
+        save_txt(dir_path + 'y_sizes.txt', y_size)
     elif scan == 'manual':
         ids.to_csv(dir_path + 'image_ids.csv')
         x_size.to_csv(dir_path + 'x_sizes.csv')
