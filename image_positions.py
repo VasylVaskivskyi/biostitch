@@ -291,11 +291,12 @@ def get_image_sizes_auto(tag_Images, main_channel):
         if z_score[i] > 1:
             prev_row = row_list[i - 1]
             this_row = row_list[i]
-            this_row = [(val[0], prev_row[0][1], val[2]) for val in this_row]
+            prev_row_y_coord = prev_row[0][1]
+            this_row = [(el[0], prev_row_y_coord, el[2]) for el in this_row]
             row_list[i - 1].extend(this_row)
             row_list[i - 1] = sorted(row_list[i - 1], key=lambda x: x[0])
             rows_to_remove.append(i)
-
+    
     row_list = [row for i, row in enumerate(row_list) if i not in rows_to_remove]
     y_sizes = [y for i, y in enumerate(y_sizes) if i not in rows_to_remove]
 

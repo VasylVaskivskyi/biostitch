@@ -119,9 +119,9 @@ def main():
             x_size = []
             y_size = []
             for row in micro_img_sizes:
-                ids.append([i[2] for i in row])
                 x_size.append([i[0] for i in row])
-                y_size.append(row[0][1])
+                y_size.append([i[1] for i in row])
+                ids.append([i[2] for i in row])
 
         elif scan == 'manual':
             ids, x_size, y_size = get_image_sizes_manual(tag_Images, reference_channel)

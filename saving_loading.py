@@ -14,8 +14,8 @@ def load_param(dir_path, scan):
             return li
 
         ids = load_txt(dir_path + 'image_ids.txt')
-        x_size = load_txt(dir_path + 'x_size.txt')
-        y_size = load_txt(dir_path + 'y_size.txt')
+        x_size = load_txt(dir_path + 'x_sizes.txt')
+        y_size = load_txt(dir_path + 'y_sizes.txt')
 
     elif scan == 'manual':
         ids = pd.read_csv(dir_path + 'image_ids.csv', index_col=0, header='infer', dtype='object')
