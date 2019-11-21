@@ -34,7 +34,7 @@ def main():
     parser.add_argument('--channels_to_correct_illumination', type=str, nargs='+', default=['none'],
                         help='specify space separated channel names that require correction of bad illumination (e.g. "DAPI"), RNA spot channels usually do not need correction.\nall: will apply correction to all channels. \nnone: will not apply to any.')
     parser.add_argument('--mode', type=str, default='regular_channel', 
-                        help='regular_channel: produce z-stacks, save by channel.\nregular_plane: produce z-stacks, save by plane.\nmaxz: produce max z-projections instead of z-stacks.')
+                        help='stack: produce z-stacks.\nmaxz: produce max z-projections instead of z-stacks.')
     parser.add_argument('--adaptive', action='store_true',
                         help='turn on adaptive estimation of image translation')
     parser.add_argument('--save_param', action='store_true', default=False,
@@ -108,8 +108,10 @@ def main():
         ill_cor_ch = []
 
     available_scan_modes = ('auto', 'manual')
-    if scan not in available_scan_modes:
-        raise ValueError('Incorrect scan mode. Available scan modes ' + ', '.join(available_scan_modes))
+    assert scan in available_scan_modes, 'Incorrect scan mode. Available scan modes ' + ', '.join(available_scan_modes)
+
+    available_stitching_modes = ('stack', 'maxz')
+    assert stitching_mode in available_scan_modes, 'Incorrect stitching mode. Available stitching modes ' + ', '.join(available_stitching_modes)
 
 # ----------- estimating image sizes ------------- #
     if param_path == 'none':
@@ -178,22 +180,7 @@ def main():
         del z_proj
 
     gc.collect()
-    if stitching_mode == 'regular_channel':
-        final_path_reg = out_dir + tag_Name + '.tif'
-        with TiffWriter(final_path_reg, bigtiff=True) as TW:
-            for i, channel in enumerate(channel_names):
-                print('\nprocessing channel no.{0}/{1} {2}'.format(i+1, nchannels, channel))
-                print('started at', datetime.now())
-                
-                if channel in ill_cor_ch:
-                    do_illum_cor = True
-                else:
-                    do_illum_cor = False
-                               
-                TW.save(stitch_series_of_planes(channel, planes_path_list, ids, x_size, y_size, do_illum_cor, scan),
-                        photometric='minisblack', contiguous=True, description=ome)
-    
-    elif stitching_mode == 'regular_plane':
+    if stitching_mode == 'stack':
         final_path_reg = out_dir + tag_Name + '.tif'
         delete = '\b'*20
         grid_size = [int(round(max((x_size.iloc[0, 0], y_size.iloc[0, 0])) / 20))] * 2

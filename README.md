@@ -17,8 +17,7 @@ This program uses microscope coordinates from `Index.idx.xml` to stitch images. 
 
 **`--channels_to_correct_illumination`**  specify space separated channel names that require correction of bad illumination (e.g. "DAPI"), RNA spot channels usually do not need correction. Default is `none`. Use `all` to apply do correction at all.
 
-**`--mode`**  **regular_channel**: produce z-stacks, save by channel (uses more memory, a bit faster); 
-            **regular_plane**: produce z-stacks, save by plane (uses less memory, a bit slower); 
+**`--mode`**  **stack**: produce z-stacks; 
             **maxz**: produce max z-projections instead of z-stacks.
             
 **`--adaptive`**    flag that enables estimation of stitching parameters using Fourier transformation based registration. If you are enabling this parameter you have to specify expected overlap between images.
@@ -40,7 +39,7 @@ This program uses microscope coordinates from `Index.idx.xml` to stitch images. 
 
 You start by telling python to run the folder `image_stitcher`, then you have to specify paths where Index.idx.xml (`--xml`) and images (`--img_dir`) are stored, and (`--out_dir`) where you want to save the stitched image. If output directory does not exist it will be created. The output file will have the name from the xml file tag name.
 
-Then add name of the `--mode`**:** `maxz` will write maximum z-projections of every channel, `regular_channel` will be processing and writing image to the disk by channels, and `regular_plane` will be processing and writing image to disk by z-planes. 
+Then add name of the `--mode`**:** `maxz` will write maximum z-projections of every channel, `stack` will create z-stack of images.
 
 The flag `--adaptive` enables adaptive estimation of overlap between images, however when enabling in you have to specify **maximum percent of overlap** between images in the `--overlap` command **in fractions of 1**. The overlap in theory should not be a big value, typically 10-20 percent (0.1-0.2). 
 
