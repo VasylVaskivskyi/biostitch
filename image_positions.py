@@ -103,13 +103,7 @@ def get_positions_from_xml(tag_Images, main_channel):
             x_pos.append(round(float(x_coord) / float(x_resol) / correction)) # x_resol[:cut_resol_x]
             y_pos.append(round(float(y_coord) / float(y_resol) / correction))
 
-    images_to_ignore = None
-    if 0 in x_pos:
-        zero_id = x_pos.index(0)
-        if y_pos[zero_id] == 0:
-            images_to_ignore = zero_id
-
-    return x_pos, y_pos, images_to_ignore
+    return x_pos, y_pos
 
 
 def get_positions_from_xml_scan_mode_auto(tag_Images, main_channel):
@@ -140,7 +134,7 @@ def get_image_positions(tag_Images, main_channel):
     function finds metadata about image location, computes
     relative location to central image, and size in pixels of each image"""
     # get microscope coordinates of images from xml file
-    x_pos, y_pos, images_to_ignore = get_positions_from_xml(tag_Images, main_channel)
+    x_pos, y_pos = get_positions_from_xml(tag_Images, main_channel)
 
     # find central field location in the list
     center_field_n = median_position(x_pos)  # x or y doesn't matter
@@ -160,11 +154,6 @@ def get_image_positions(tag_Images, main_channel):
         for j in relative_x:
             if i[1] == j[1]:  # if field id same
                 id_full_range.append( [j[0], i[0], j[1]] )  # x position, y position, field id
-
-    # remove id of image with (0,0) coordinates if there is any
-    for i in range(0, len(id_full_range)):
-        if id_full_range[i][2] == images_to_ignore:
-            del id_full_range[i]
 
     x_full_range = []
     y_full_range = []
