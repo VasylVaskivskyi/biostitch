@@ -2,7 +2,7 @@ import pandas as pd
 import re
 
 
-def load_param(dir_path, scan):
+def load_parameters(dir_path, scan):
     if scan == 'auto':
         def load_txt(path):
             li = []
@@ -37,7 +37,7 @@ def load_param(dir_path, scan):
     return ids, x_size, y_size
 
 
-def save_param(dir_path, scan, ids, x_size, y_size):
+def save_parameters(dir_path, scan, ids, x_size, y_size):
     if scan == 'auto':
         def save_txt(path, li):
             with open(path, 'w') as f:

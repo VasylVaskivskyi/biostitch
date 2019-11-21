@@ -13,7 +13,7 @@ from ome_tags import create_ome_metadata, get_channel_metadata
 from adaptive_estimation import AdaptiveShiftEstimation
 from image_positions import load_necessary_xml_tags, get_image_sizes_auto, get_image_sizes_manual, get_image_paths_for_fields_per_channel, get_image_paths_for_planes_per_channel
 from image_processing import stitch_z_projection, create_z_projection_for_fov, stitch_series_of_planes, stitch_plane2
-from saving_loading import load_param, save_param
+from saving_loading import load_parameters, save_parameters
 
 def main():
 
@@ -54,7 +54,7 @@ def main():
     ill_cor_ch = args.channels_to_correct_illumination
     stitching_mode = args.mode
     is_adaptive = args.adaptive
-    do_save_param = args.save_param
+    save_param = args.save_param
     param_path = args.load_param
     scan = args.scan
 
@@ -144,12 +144,12 @@ def main():
         print('using parameters from loaded files')
         if not param_path.endswith('/'):
             param_path = param_path + '/'
-        ids, x_size, y_size = load_param(param_path, scan)
+        ids, x_size, y_size = load_parameters(param_path, scan)
 
 # ---------- saving estimated parameters to files ------------- #
-    if do_save_param:
+    if save_param:
         print('saving_parameters')
-        save_param(out_dir, scan, ids, x_size, y_size)
+        save_parameters(out_dir, scan, ids, x_size, y_size)
 
 # -------- generating ome metadata ------------ #
     # width and height of single plain
