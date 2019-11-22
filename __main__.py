@@ -16,8 +16,8 @@ def main():
                         help='path to output directory.')
     parser.add_argument('--reference_channel', type=str, default='none',
                         help='select channel that will be used for estimating stitching parameters. Default is to use first channel.')
-    parser.add_argument('--preview_channel', type=str, default='none',
-                        help='will generate z-max projection of specified channel in the out_dir.')
+    parser.add_argument('--make_preview', type=str, default='none',
+                        help='will generate z-max projection of reference channel in the out_dir.')
     parser.add_argument('--stitch_channels', type=str, nargs='+', default='all',
                         help='specify space separated channel names to stitch (e.g. "DAPI" "ALEXA 657"). Default to stitch all channels.')
     parser.add_argument('--correct_illumination_in_channels', type=str, nargs='+', default='none',
@@ -46,6 +46,9 @@ def main():
     stitcher.correct_illumination_in_channels = args.correct_illumination_in_channels
     stitcher.load_stitching_parameters_from = args.load_param
     stitcher.image_name = args.output_name
+    stitcher.use_adaptive_stitching = args.adaptive
+    stitcher.make_preview = args.make_preview
+    stitcher.save_stitching_parameters = args.save_param
     stitcher.stitch()
 
 

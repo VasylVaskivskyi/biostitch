@@ -22,7 +22,7 @@ This program uses microscope coordinates from `Index.idx.xml` to stitch images. 
             
 **`--adaptive`**    flag that enables estimation of stitching parameters using Fourier transformation based registration. If you are enabling this parameter you have to specify expected overlap between images.
 
-**`--preview_channel`**  will generate z-max projection of specified channel in the out_dir.
+**`--make_preview`**  will generate z-max projection of specified channel in the out_dir.
 
 **`--save_param`**     will save parameters estimated during stitching into 3 csv files (image_ids, x_sizes, y_sizes)
 

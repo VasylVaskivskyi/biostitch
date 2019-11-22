@@ -37,13 +37,9 @@ class ImageStitcher:
         self._preview_ome_meta = ''
 
 
-    def stitch(self, adaptive=True, make_preview=True, save_param=True):
+    def stitch(self):
         st = datetime.now()
         print('\nstarted', st)
-
-        self._is_adaptive = adaptive
-        self._make_preview = make_preview
-        self._save_param = save_param
 
         self.check_dir_exist()
         tag_Images, field_path_list, plane_path_list, channel_ids = self.load_metadata()
@@ -51,6 +47,7 @@ class ImageStitcher:
         self.generate_ome_meta(channel_ids, x_size, y_size, tag_Images, plane_path_list)
         self.perform_stitching(ids, x_size, y_size, plane_path_list, field_path_list, self._ome_meta)
         self.write_separate_ome_xml()
+
         fin = datetime.now()
         print('\nelapsed time', fin - st)
 
@@ -203,17 +200,13 @@ class ImageStitcher:
         if self._stitching_mode == 'stack':
             final_path_reg = self._out_dir + self._img_name
             delete = '\b'*20
-            grid_size = [int(round(max((x_size.iloc[0, 0], y_size.iloc[0, 0])) / 20))] * 2
-            grid_size = tuple(i if i % 2 != 0 else i + 1 for i in grid_size)
-            contrast_limit = 256
-            clahe = cv.createCLAHE(contrast_limit, grid_size)
             with TiffWriter(final_path_reg, bigtiff=True) as TW:
                 for i, channel in enumerate(self._channel_names):
                     print('\nprocessing channel no.{0}/{1} {2}'.format(i + 1, self._nchannels, channel))
                     print('started at', datetime.now())
                     for j, plane in enumerate(plane_path_list[channel]):
                         print('{0}plane {1}/{2}'.format(delete, j + 1, nplanes), end='', flush=True)
-                        TW.save(stitch_plane(plane, clahe, ids, x_size, y_size,  self._ill_cor_ch[channel], self._scan),
+                        TW.save(stitch_plane(plane, ids, x_size, y_size,  self._ill_cor_ch[channel], self._scan),
                                 photometric='minisblack', contiguous=True, description=metadata)
 
         elif self._stitching_mode == 'maxz':
@@ -310,3 +303,27 @@ class ImageStitcher:
     @image_name.setter
     def image_name(self, value):
         self._img_name = value
+
+    @property
+    def use_adaptive_stitching(self):
+        """ Specify if you want to use adaptive stitching """
+        return self._is_adaptive
+    @use_adaptive_stitching.setter
+    def use_adaptive_stitching(self, value):
+        self._is_adaptive = value
+
+    @property
+    def make_preview(self):
+        """ Specify if you want to get preview of reference channel """
+        return self._make_preview
+    @make_preview.setter
+    def make_preview(self, value):
+        self._make_preview = value
+
+    @property
+    def save_stitching_parameters(self):
+        """ Specify if you want to save calculated stitching parameters """
+        return self._save_param
+    @save_stitching_parameters.setter
+    def save_stitching_parameters(self, value):
+        self._save_param = value

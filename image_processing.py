@@ -57,18 +57,19 @@ def remove_bg(image, image_shape=None):
     return result
 
 
-def equalize_histograms(img_list, contrast_limit=127, grid_size=(41, 41)):
+
+def equalize_histogram(img_list):
     """ Function for adaptive normalization of image histogram CLAHE """
     nrows, ncols = img_list[0].shape
     grid_size = [int(round(max((ncols, nrows)) / 20))] * 2
     grid_size = tuple(i if i % 2 != 0 else i + 1 for i in grid_size)
     contrast_limit = 256
-
-    clahe = cv.createCLAHE(contrast_limit, grid_size)
-    task = [dask.delayed(clahe.apply)(img) for img in img_list]
+    def clahe_process(img):
+        clahe = cv.createCLAHE(contrast_limit, grid_size)
+        return clahe.apply(img)
+        
+    task = [dask.delayed(clahe_process)(img) for img in img_list]
     img_list = dask.compute(*task, scheduler='processes')
-    #img_list = list(map(clahe.apply, img_list))
-    clahe.collectGarbage()
     return img_list
 
 
@@ -92,7 +93,7 @@ def stitch_z_projection(channel_name, fields_path_list, ids, x_size, y_size, do_
     """ Create max z projection for each field of view """
     z_max_fov_list = create_z_projection_for_fov(channel_name, fields_path_list)
     if do_illum_cor:
-        z_max_fov_list = equalize_histograms(z_max_fov_list)
+        z_max_fov_list = equalize_histogram(z_max_fov_list)
         z_proj = stitch_images(z_max_fov_list, ids, x_size, y_size, scan_mode)
     else:
         z_proj = stitch_images(z_max_fov_list, ids, x_size, y_size, scan_mode)
@@ -167,7 +168,7 @@ def stitch_images(images, ids, x_size, y_size, scan_mode):
     return res
 
 
-def stitch_plane(plane_paths, clahe, ids, x_size, y_size, do_illum_cor, scan_mode):
+def stitch_plane(plane_paths, ids, x_size, y_size, do_illum_cor, scan_mode):
     """ Do histogram normalization and stitch multiple images into one plane """
     images = read_images(plane_paths, is_dir=False)
     dtype = images[0].dtype.type
@@ -175,7 +176,6 @@ def stitch_plane(plane_paths, clahe, ids, x_size, y_size, do_illum_cor, scan_mod
     nrows = sum(y_size.iloc[:, 0])
     result_plane = np.zeros((1, nrows, ncols), dtype=dtype)
     if do_illum_cor:
-        images = list(map(clahe.apply, images))
-        clahe.collectGarbage()
+        images = equalize_histogram(images)
     result_plane[0, :, :] = stitch_images(images, ids, x_size, y_size, scan_mode)
     return result_plane
