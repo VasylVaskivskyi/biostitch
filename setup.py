@@ -34,5 +34,5 @@ setup(
                       'tifffile >= 2019.7.26',
                       'opencv-contrib-python >= 4.0',
                       'dask[complete] >=2.6.0'
-                      ],
+                      ]
 )
