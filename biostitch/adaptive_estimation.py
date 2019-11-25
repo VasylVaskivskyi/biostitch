@@ -3,9 +3,6 @@ import pandas as pd
 import cv2 as cv
 from copy import deepcopy
 from itertools import chain
-#from skimage.feature import register_translation
-np.set_printoptions(suppress=True)  # use normal numeric notation instead of exponential
-pd.set_option('display.width', 1000)
 
 
 class AdaptiveShiftEstimation:
@@ -19,7 +16,6 @@ class AdaptiveShiftEstimation:
     @property
     def scan(self):
         return self._scan
-
     @scan.setter
     def scan(self, value):
         self._scan = value
@@ -27,7 +23,6 @@ class AdaptiveShiftEstimation:
     @property
     def micro_ids(self):
         return self._micro_ids
-
     @micro_ids.setter
     def micro_ids(self, value):
         self._micro_ids = value
@@ -35,7 +30,6 @@ class AdaptiveShiftEstimation:
     @property
     def micro_x_size(self):
         return self._micro_x_size
-
     @micro_x_size.setter
     def micro_x_size(self, value):
         self._micro_x_size = value
@@ -43,7 +37,6 @@ class AdaptiveShiftEstimation:
     @property
     def micro_y_size(self):
         return self._micro_x_size
-
     @micro_y_size.setter
     def micro_y_size(self, value):
         self._micro_y_size = value
@@ -142,7 +135,7 @@ class AdaptiveShiftEstimation:
         nrows, ncols = x_size.shape
 
         for i in range(0, nrows):
-            x_size.iloc[i,:] = self.find_shift_series(images, ids.iloc[i, :], self._micro_x_size.iloc[i, :], 'horizontal')
+            x_size.iloc[i, :] = self.find_shift_series(images, ids.iloc[i, :], self._micro_x_size.iloc[i, :], 'horizontal')
         x_size = self.use_median(x_size, axis=0)
         x_size.iloc[:, 0] = self._default_image_shape[1]
         
@@ -150,7 +143,7 @@ class AdaptiveShiftEstimation:
         for i in range(0, ncols):
             x_size.iloc[:, i] = int(round(col_means[i]))
             
-        x_size = x_size.astype(np.int64)
+        x_size = x_size.astype(np.int32)
         return x_size
 
     def find_translation_y(self, images):
@@ -168,7 +161,7 @@ class AdaptiveShiftEstimation:
         for i in range(0, nrows):
             y_size.iloc[i, :] = int(round(row_means[i]))
 
-        y_size = y_size.astype(np.int64)
+        y_size = y_size.astype(np.int32)
         return y_size
 
     # ----------- Estimation of auto scanned images -----------------

@@ -1,22 +1,21 @@
 import tifffile as tif
-from tifffile import TiffWriter
 import gc
-from datetime import datetime
 import os
-import cv2 as cv
 import numpy as np
-from ome_tags import create_ome_metadata, get_channel_metadata
-from adaptive_estimation import AdaptiveShiftEstimation
-from image_positions import load_necessary_xml_tags, get_image_sizes_auto, get_image_sizes_manual, get_image_paths_for_fields_per_channel, get_image_paths_for_planes_per_channel
-from image_processing import stitch_z_projection, create_z_projection_for_fov, stitch_plane, stitch_images
-from saving_loading import load_parameters, save_parameters
+from datetime import datetime
+
+from .ome_tags import create_ome_metadata, get_channel_metadata
+from .adaptive_estimation import AdaptiveShiftEstimation
+from .image_positions import load_necessary_xml_tags, get_image_sizes_auto, get_image_sizes_manual, get_image_paths_for_fields_per_channel, get_image_paths_for_planes_per_channel
+from .image_processing import stitch_z_projection, create_z_projection_for_fov, stitch_plane, stitch_images
+from .saving_loading import load_parameters, save_parameters
 
 
 class ImageStitcher:
     def __init__(self):
         # user input
         self._img_dir = ''
-        self._xml_path = ''
+        self._xml_path = None
         self._out_dir = ''
         self._reference_channel = ''
         self._stitch_only_ch = ['all']
@@ -28,6 +27,7 @@ class ImageStitcher:
         self._save_param = ''
         self._load_param_path = ''
         self._img_name = ''
+        self._fovs = None
         # working variables
         self._channel_names = []
         self._nchannels = 0
@@ -35,6 +35,7 @@ class ImageStitcher:
         self._measurement_time = ''
         self._ome_meta = ''
         self._preview_ome_meta = ''
+        self._channel_ids = {}
 
 
     def stitch(self):
@@ -42,9 +43,9 @@ class ImageStitcher:
         print('\nstarted', st)
 
         self.check_dir_exist()
-        tag_Images, field_path_list, plane_path_list, channel_ids = self.load_metadata()
+        tag_Images, field_path_list, plane_path_list = self.load_metadata()
         ids, x_size, y_size = self.estimate_image_sizes(tag_Images, field_path_list)
-        self.generate_ome_meta(channel_ids, x_size, y_size, tag_Images, plane_path_list)
+        self.generate_ome_meta(self._channel_ids, x_size, y_size, tag_Images, plane_path_list)
         self.perform_stitching(ids, x_size, y_size, plane_path_list, field_path_list, self._ome_meta)
         self.write_separate_ome_xml()
 
@@ -62,6 +63,10 @@ class ImageStitcher:
             self._out_dir = self._out_dir + '/'
         if not self._img_dir.endswith('/'):
             self._img_dir = self._img_dir + '/'
+
+        if self._xml_path is None:
+            self._xml_path = self._img_dir + 'Index.idx.xml'
+
 
     def load_metadata(self):
         tag_Images, tag_Name, tag_MeasurementStartTime = load_necessary_xml_tags(self._xml_path)
@@ -107,7 +112,7 @@ class ImageStitcher:
         if self._stitching_mode not in available_stitching_modes:
             raise ValueError('Incorrect stitching mode. Available stitching modes ' + ', '.join(available_stitching_modes))
 
-        channel_ids = {k: v for k, v in channel_ids.items() if k in channel_names}
+        self._channel_ids = {k: v for k, v in channel_ids.items() if k in channel_names}
         self._channel_names = channel_names
         self._nchannels = nchannels
         self._measurement_time = tag_MeasurementStartTime
@@ -116,7 +121,9 @@ class ImageStitcher:
         if not self._img_name.endswith('.tif'):
             self._img_name += '.tif'
 
-        return tag_Images, field_path_list, plane_path_list, channel_ids
+        self._fovs = self._fovs.split(',')
+
+        return tag_Images, field_path_list, plane_path_list
 
     def estimate_image_sizes(self, tag_Images, field_path_list):
         if self._load_param_path == 'none':
@@ -131,7 +138,7 @@ class ImageStitcher:
                     ids.append([i[2] for i in row])
 
             elif self._scan == 'manual':
-                ids, x_size, y_size = get_image_sizes_manual(tag_Images, self._reference_channel)
+                ids, x_size, y_size = get_image_sizes_manual(tag_Images, self._reference_channel, self._fovs)
 
             if self._is_adaptive:
                 print('estimating image translation')
@@ -200,7 +207,7 @@ class ImageStitcher:
         if self._stitching_mode == 'stack':
             final_path_reg = self._out_dir + self._img_name
             delete = '\b'*20
-            with TiffWriter(final_path_reg, bigtiff=True) as TW:
+            with tif.tiffWriter(final_path_reg, bigtiff=True) as TW:
                 for i, channel in enumerate(self._channel_names):
                     print('\nprocessing channel no.{0}/{1} {2}'.format(i + 1, self._nchannels, channel))
                     print('started at', datetime.now())
@@ -211,7 +218,7 @@ class ImageStitcher:
 
         elif self._stitching_mode == 'maxz':
             final_path_maxz = self._out_dir + 'maxz_' + self._img_name
-            with TiffWriter(final_path_maxz, bigtiff=True) as TW:
+            with tif.tiffWriter(final_path_maxz, bigtiff=True) as TW:
                 for i, channel in enumerate(self._channel_names):
                     print('\nprocessing channel no.{0}/{1} {2}'.format(i + 1, self._nchannels, channel))
                     print('started at', datetime.now())
@@ -327,3 +334,10 @@ class ImageStitcher:
     @save_stitching_parameters.setter
     def save_stitching_parameters(self, value):
         self._save_param = value
+
+    @property
+    def fovs(self):
+        return self._fovs
+    @fovs.setter
+    def fovs(self, value):
+        self._fovs = value

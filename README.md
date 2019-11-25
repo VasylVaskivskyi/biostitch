@@ -35,10 +35,10 @@ This program uses microscope coordinates from `Index.idx.xml` to stitch images. 
 
 ## Example usage
 
-`python image_stitcher --xml "/path/to/dataset/Images/Index.idx.xml" --img_dir "/path/to/dataset/Images/" --out_dir "/path/to/out/directory/" --scane "manual" --mode "maxz" --adaptive --overlap 0.1 0.1 --make_preview --stitch_channels "DAPI" "ALEXA 568" --correct_illumination_in_channels "DAPI"`
+`python image_stitcher --img_dir "/path/to/dataset/Images/" --out_dir "/path/to/out/directory/" --scan "manual" --mode "maxz" --adaptive --make_preview --stitch_channels "DAPI" "ALEXA 568" --correct_illumination_in_channels "DAPI"`
 
 
-You start by telling python to run the folder `image_stitcher`, then you have to specify paths where Index.idx.xml (`--xml`) and images (`--img_dir`) are stored, and (`--out_dir`) where you want to save the stitched image. If output directory does not exist it will be created. The output file will have the name from the xml file tag name.
+You start by telling python to run the folder `image_stitcher`, then you have to specify paths images are stored (`--img_dir`), optionally you can also specify path to Index.idx.xml (`--xml`), and (`--out_dir`) where you want to save the stitched image. If output directory does not exist it will be created. The output file will have the name from the xml file tag name.
 
 Then add name of the `--mode`**:** `maxz` will write maximum z-projections of every channel, `stack` will create z-stack of images.
 
@@ -55,9 +55,10 @@ Finally, if you want to save estimated stitching parameters use `--save_params` 
 
 ## Dependencies
 
-`numpy, pandas, imagecodecs-lite, tifffile, opencv-contrib-python, scikit-image, dask`
+`numpy, pandas, imagecodecs-lite, tifffile, opencv-contrib-python, dask`
 
 This program developed and tested in the **conda** environment and some packages may fail to install correctly without it.
+If you want to install `dask` with `pip`, use command `pip install "dask[complete]"`.  
 
 **Installation example for conda**
 
@@ -65,5 +66,5 @@ This program developed and tested in the **conda** environment and some packages
 
 `source activate stitching`
 
-`pip install imagecodecs-lite tifffile opencv-contrib-python scikit-image`
+`pip install imagecodecs-lite tifffile opencv-contrib-python`
 
