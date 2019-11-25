@@ -10,7 +10,7 @@ def main():
         description="Phenix image stitcher.\nPLEASE DO NOT USE SINGLE QUOTES FOR ARGS")
     parser.add_argument('--img_dir', type=str, required=True,
                         help='path to the directory with images.')
-    parser.add_argument('--xml', type=str, required=True, default=None,
+    parser.add_argument('--xml', type=str, default=None,
                         help='path to the xml file typically ../Images/Index.idx.xml')
     parser.add_argument('--out_dir', type=str, required=True,
                         help='path to output directory.')

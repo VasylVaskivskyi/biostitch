@@ -60,7 +60,7 @@ def create_relative_position(array, center_field):
     full_range.extend(minus_sorted)
     full_range.extend(same)
     full_range.extend(plus_sorted)
-    print('\n\nrel_pos', full_range)
+    
     return full_range
 
 
@@ -107,7 +107,7 @@ def get_positions_from_xml(tag_Images, reference_channel, fovs):
                 # convert position to pixels by dividing on resolution in nm
                 x_pos.append(round(float(x_coord) / float(x_resol)))
                 y_pos.append(round(float(y_coord) / float(y_resol)))
-    print(x_pos, y_pos)
+    
     return x_pos, y_pos
 
 

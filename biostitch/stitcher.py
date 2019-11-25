@@ -1,4 +1,5 @@
 import tifffile as tif
+from tifffile import TiffWriter
 import gc
 import os
 import numpy as np
@@ -120,8 +121,9 @@ class ImageStitcher:
             self._img_name = tag_Name
         if not self._img_name.endswith('.tif'):
             self._img_name += '.tif'
-
-        self._fovs = self._fovs.split(',')
+        
+        if self._fovs is not None:
+            self._fovs = self._fovs.split(',')
 
         return tag_Images, field_path_list, plane_path_list
 
@@ -207,7 +209,7 @@ class ImageStitcher:
         if self._stitching_mode == 'stack':
             final_path_reg = self._out_dir + self._img_name
             delete = '\b'*20
-            with tif.tiffWriter(final_path_reg, bigtiff=True) as TW:
+            with TiffWriter(final_path_reg, bigtiff=True) as TW:
                 for i, channel in enumerate(self._channel_names):
                     print('\nprocessing channel no.{0}/{1} {2}'.format(i + 1, self._nchannels, channel))
                     print('started at', datetime.now())
@@ -218,7 +220,7 @@ class ImageStitcher:
 
         elif self._stitching_mode == 'maxz':
             final_path_maxz = self._out_dir + 'maxz_' + self._img_name
-            with tif.tiffWriter(final_path_maxz, bigtiff=True) as TW:
+            with TiffWriter(final_path_maxz, bigtiff=True) as TW:
                 for i, channel in enumerate(self._channel_names):
                     print('\nprocessing channel no.{0}/{1} {2}'.format(i + 1, self._nchannels, channel))
                     print('started at', datetime.now())
