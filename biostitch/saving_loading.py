@@ -2,7 +2,7 @@ import pandas as pd
 import re
 
 
-def load_param(dir_path, scan):
+def load_parameters(dir_path, scan):
     if scan == 'auto':
         def load_txt(path):
             li = []
@@ -14,8 +14,8 @@ def load_param(dir_path, scan):
             return li
 
         ids = load_txt(dir_path + 'image_ids.txt')
-        x_size = load_txt(dir_path + 'x_size.txt')
-        y_size = load_txt(dir_path + 'y_size.txt')
+        x_size = load_txt(dir_path + 'x_sizes.txt')
+        y_size = load_txt(dir_path + 'y_sizes.txt')
 
     elif scan == 'manual':
         ids = pd.read_csv(dir_path + 'image_ids.csv', index_col=0, header='infer', dtype='object')
@@ -37,7 +37,7 @@ def load_param(dir_path, scan):
     return ids, x_size, y_size
 
 
-def save_param(dir_path, scan, ids, x_size, y_size):
+def save_parameters(dir_path, scan, ids, x_size, y_size):
     if scan == 'auto':
         def save_txt(path, li):
             with open(path, 'w') as f:
@@ -45,8 +45,8 @@ def save_param(dir_path, scan, ids, x_size, y_size):
                     f.write(','.join(str(i) for i in row) + '\n')
 
         save_txt(dir_path + 'image_ids.txt', ids)
-        save_txt(dir_path + 'x_sizes.txt', ids)
-        save_txt(dir_path + 'y_sizes.txt', ids)
+        save_txt(dir_path + 'x_sizes.txt', x_size)
+        save_txt(dir_path + 'y_sizes.txt', y_size)
     elif scan == 'manual':
         ids.to_csv(dir_path + 'image_ids.csv')
         x_size.to_csv(dir_path + 'x_sizes.csv')

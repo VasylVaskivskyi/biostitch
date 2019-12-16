@@ -3,13 +3,20 @@ import numpy as np
 import pandas as pd
 
 # ----------- Get relative position of images with respect to central image ----------
-def median_position(val_list) -> int:
+def median_position(val_list):
     """find central image"""
     return (len(val_list) // 2) + 1
 
 
-def assign_rel_pos(array) -> list:
+def assign_rel_pos(array):
     """arrange images depending on how far they from central image"""
+    try:
+        array[0][0] > 0
+        array[0][0] < 0
+    except IndexError:
+        print('Error: Not enough fields of view for stitching')
+        exit()
+
     if array[0][0] > 0:
         for i in range(0, len(array)):
             if array[i][2] > array[i - 1][2]:
@@ -26,7 +33,7 @@ def assign_rel_pos(array) -> list:
     return array
 
 
-def create_relative_position(array, center_field) -> list:
+def create_relative_position(array, center_field):
     """find central image and sorts other values with respect to center"""
 
     plus = []   # values displaced in y+ or x+ from center
@@ -53,10 +60,12 @@ def create_relative_position(array, center_field) -> list:
     full_range.extend(minus_sorted)
     full_range.extend(same)
     full_range.extend(plus_sorted)
+    
     return full_range
 
+
 def load_necessary_xml_tags(xml_path):
-    """ xml tag Images contain information about image size, resolution, binning, position, wave lenght, objective information.
+    """ xml tag Images contain information about image size, resolution, binning, position, wave length, objective information.
         xml tag Name - experiment name.
         xml tag MeasurementStartTime - image acquisition time.
     """
@@ -73,46 +82,36 @@ def load_necessary_xml_tags(xml_path):
     return tag_Images, tag_Name, tag_MeasurementStartTime
 
 
-def get_positions_from_xml(tag_Images, main_channel):
+def get_positions_from_xml(tag_Images, reference_channel, fovs):
     """read xml metadata and find image metadata (position, channel name) """
-    
-    magnification = tag_Images[0].find('ObjectiveMagnification').text
-    binning = tag_Images[0].find('BinningX').text
-    if magnification == '20' and binning == '1':
-        correction = 0.9871
-    elif magnification == '40' and binning == '2':
-        correction = 0.9971
-    elif magnification == '5' and binning == '2':
-        correction = 1
-    else:
-        print('There is no correction parameter available for this magnification and binning setup. Results may be inacurate.')
-        correction = 1
-    
     x_resol = '{:.20f}'.format(float(tag_Images[0].find('ImageResolutionX').text))
     y_resol = '{:.20f}'.format(float(tag_Images[0].find('ImageResolutionY').text))
 
     x_pos = []
     y_pos = []
+    if fovs is not None:
+        for img in tag_Images:
+            if img.find('ChannelName').text == reference_channel and img.find('PlaneID').text == '1' and img.find('FieldID').text in fovs:
+                x_coord = '{:.9f}'.format(float(img.find('PositionX').text))  # limit precision to nm
+                y_coord = '{:.9f}'.format(float(img.find('PositionY').text))
 
-    for img in tag_Images:
-        if img.find('ChannelName').text == main_channel and img.find('PlaneID').text == '1':
-            x_coord = '{:.9f}'.format(float(img.find('PositionX').text))  # limit precision to nm
-            y_coord = '{:.9f}'.format(float(img.find('PositionY').text))
+                # convert position to pixels by dividing on resolution in nm
+                x_pos.append(round(float(x_coord) / float(x_resol)))
+                y_pos.append(round(float(y_coord) / float(y_resol)))
+    else:
+        for img in tag_Images:
+            if img.find('ChannelName').text == reference_channel and img.find('PlaneID').text == '1':
+                x_coord = '{:.9f}'.format(float(img.find('PositionX').text))  # limit precision to nm
+                y_coord = '{:.9f}'.format(float(img.find('PositionY').text))
 
-            # convert position to pixels by dividing on resolution in nm
-            x_pos.append(round(float(x_coord) / float(x_resol) / correction)) # x_resol[:cut_resol_x]
-            y_pos.append(round(float(y_coord) / float(y_resol) / correction))
-
-    images_to_ignore = None
-    if 0 in x_pos:
-        zero_id = x_pos.index(0)
-        if y_pos[zero_id] == 0:
-            images_to_ignore = zero_id
-
-    return x_pos, y_pos, images_to_ignore
+                # convert position to pixels by dividing on resolution in nm
+                x_pos.append(round(float(x_coord) / float(x_resol)))
+                y_pos.append(round(float(y_coord) / float(y_resol)))
+    
+    return x_pos, y_pos
 
 
-def get_positions_from_xml_scan_mode_auto(tag_Images, main_channel):
+def get_positions_from_xml_scan_mode_auto(tag_Images, reference_channel):
     """read xml metadata and find image metadata (position, channel name) """
 
     x_resol = '{:.20f}'.format(float(tag_Images[0].find('ImageResolutionX').text))
@@ -123,7 +122,7 @@ def get_positions_from_xml_scan_mode_auto(tag_Images, main_channel):
 
     img_pos = []
     for img in tag_Images:
-        if img.find('ChannelName').text == main_channel and img.find('PlaneID').text == '1':
+        if img.find('ChannelName').text == reference_channel and img.find('PlaneID').text == '1':
             x_coord = '{:.9f}'.format(float(img.find('PositionX').text))  # limit precision to nm
             y_coord = '{:.9f}'.format(float(img.find('PositionY').text))
 
@@ -135,12 +134,12 @@ def get_positions_from_xml_scan_mode_auto(tag_Images, main_channel):
     return x_pos, y_pos, img_pos
 
 
-def get_image_positions(tag_Images, main_channel):
+def get_image_positions(tag_Images, reference_channel, fovs):
     """specify path to read xml file
     function finds metadata about image location, computes
     relative location to central image, and size in pixels of each image"""
     # get microscope coordinates of images from xml file
-    x_pos, y_pos, images_to_ignore = get_positions_from_xml(tag_Images, main_channel)
+    x_pos, y_pos = get_positions_from_xml(tag_Images, reference_channel, fovs)
 
     # find central field location in the list
     center_field_n = median_position(x_pos)  # x or y doesn't matter
@@ -160,11 +159,6 @@ def get_image_positions(tag_Images, main_channel):
         for j in relative_x:
             if i[1] == j[1]:  # if field id same
                 id_full_range.append( [j[0], i[0], j[1]] )  # x position, y position, field id
-
-    # remove id of image with (0,0) coordinates if there is any
-    for i in range(0, len(id_full_range)):
-        if id_full_range[i][2] == images_to_ignore:
-            del id_full_range[i]
 
     x_full_range = []
     y_full_range = []
@@ -209,8 +203,8 @@ def get_image_positions(tag_Images, main_channel):
     return id_df, x_df, y_df
 
 
-def get_image_sizes_manual(tag_Images, main_channel):
-    id_df, x_df, y_df = get_image_positions(tag_Images, main_channel)
+def get_image_sizes_manual(tag_Images, reference_channel, fovs):
+    id_df, x_df, y_df = get_image_positions(tag_Images, reference_channel, fovs)
     nrows, ncols = id_df.shape
     # pd.options.display.width = 0
     x_size = pd.DataFrame(columns=x_df.columns, index=x_df.index)
@@ -242,12 +236,12 @@ def get_image_sizes_manual(tag_Images, main_channel):
     return id_df, x_size, y_size
 
 
-def get_image_sizes_auto(tag_Images, main_channel):
+def get_image_sizes_auto(tag_Images, reference_channel):
     """specify path to read xml file
     function finds metadata about image location, computes
     relative location to central image, and size in pixels of each image"""
     # get microscope coordinates of images from xml file
-    x_pos, y_pos, img_pos = get_positions_from_xml_scan_mode_auto(tag_Images, main_channel)
+    x_pos, y_pos, img_pos = get_positions_from_xml_scan_mode_auto(tag_Images, reference_channel)
     default_img_width = int(tag_Images[0].find('ImageSizeX').text)
     default_img_height = int(tag_Images[0].find('ImageSizeY').text)
 
@@ -291,11 +285,12 @@ def get_image_sizes_auto(tag_Images, main_channel):
         if z_score[i] > 1:
             prev_row = row_list[i - 1]
             this_row = row_list[i]
-            this_row = [(val[0], prev_row[0][1], val[2]) for val in this_row]
+            prev_row_y_coord = prev_row[0][1]
+            this_row = [(el[0], prev_row_y_coord, el[2]) for el in this_row]
             row_list[i - 1].extend(this_row)
             row_list[i - 1] = sorted(row_list[i - 1], key=lambda x: x[0])
             rows_to_remove.append(i)
-
+    
     row_list = [row for i, row in enumerate(row_list) if i not in rows_to_remove]
     y_sizes = [y for i, y in enumerate(y_sizes) if i not in rows_to_remove]
 
