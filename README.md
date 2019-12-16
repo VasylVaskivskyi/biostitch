@@ -26,7 +26,7 @@ This program uses microscope coordinates from `Index.idx.xml` to stitch images. 
 
 **`--stitch_channels`**   specify space separated channel names to stitch (e.g. "DAPI" "ALEXA 657"). Default is to use all channels.
 
-**`--correct_illumination_in_channels`**  specify space separated channel names that require correction of bad illumination (e.g. "DAPI"), RNA spot channels usually do not need correction. Default is `none`. Use `all` to apply do correction at all.
+**`--correct_illumination_in_channels`**  specify space separated channel names that require correction of bad illumination (e.g. "DAPI"), RNA spot channels usually do not need correction. Default is `none`. Use `all` to apply correction to all channels.
 
 **`--adaptive`**    flag that enables estimation of stitching parameters using Fourier transformation based registration. If you are enabling this parameter you have to specify expected overlap between images.
 
@@ -40,10 +40,18 @@ This program uses microscope coordinates from `Index.idx.xml` to stitch images. 
 
 **`--fovs`**    specify a comma separated, without spaces, subset of fields of view you want to use for stitching
 
+**`--extra_meta`**, JSON formatted extra metadata ("channel_names")
+
 
 ## Example usage
-From repository directory run:
-`python biostitch --img_dir "/path/to/dataset/Images/" --out_dir "/path/to/out/directory/" --scan "manual" --mode "maxz" --adaptive --make_preview --stitch_channels "DAPI" "ALEXA 568" --correct_illumination_in_channels "DAPI"` 
+
+`cd biostitch`\
+`conda activate stitching`\
+`python -m biostitch --img_dir "/path/to/dataset/Images/" --out_dir "/path/to/out/directory/" 
+--scan "manual" --mode "maxz" --adaptive --make_preview --stitch_channels "DAPI" "ALEXA 568" --correct_illumination_in_channels "DAPI"
+--extra_meta "{ \"channel_names\": { \"DAPI\": \"nuclei\", \"Alexa 488\": \"some gene\" } }"
+`
+ 
 
 
 ## Dependencies

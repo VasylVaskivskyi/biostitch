@@ -29,6 +29,7 @@ class ImageStitcher:
         self._load_param_path = ''
         self._img_name = ''
         self._fovs = None
+        self._extra_meta = None
         # working variables
         self._channel_names = []
         self._nchannels = 0
@@ -187,14 +188,14 @@ class ImageStitcher:
 
         if self._stitching_mode == 'stack':
             self._ome_meta = create_ome_metadata(self._img_name, width, height, self._nchannels, nplanes, 1, 'uint16', final_meta,
-                                      tag_Images, self._measurement_time)
+                                      tag_Images, self._measurement_time, self._extra_meta)
         elif self._stitching_mode == 'maxz':
             self._ome_meta = create_ome_metadata(self._img_name, width, height, self._nchannels, 1, 1, 'uint16', final_meta,
-                                      tag_Images, self._measurement_time)
+                                      tag_Images, self._measurement_time, self._extra_meta)
 
         preview_meta = {self._reference_channel: final_meta[self._reference_channel]}
         self._preview_ome_meta = create_ome_metadata(self._img_name, width, height, 1, 1, 1, 'uint16',
-                                          preview_meta, tag_Images, self._measurement_time)
+                                          preview_meta, tag_Images, self._measurement_time, self._extra_meta)
 
     def generate_preview(self, ids, x_size, y_size, metadata, fovs=None):
         print('generating max z preview')
@@ -343,3 +344,10 @@ class ImageStitcher:
     @fovs.setter
     def fovs(self, value):
         self._fovs = value
+
+    @property
+    def extra_meta(self):
+        return self.extra_meta
+    @extra_meta.setter
+    def extra_meta(self, value):
+        self._extra_meta = value

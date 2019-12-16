@@ -14,6 +14,10 @@ def main():
                         help='path to the xml file typically ../Images/Index.idx.xml')
     parser.add_argument('--out_dir', type=str, required=True,
                         help='path to output directory.')
+    parser.add_argument('--scan', type=str, default='none', required=True,
+                        help='specify scanning mode (auto or manual)')
+    parser.add_argument('--mode', type=str, required=True,
+                        help='stack: produce z-stacks.\nmaxz: produce max z-projections instead of z-stacks.')
     parser.add_argument('--reference_channel', type=str, default='none',
                         help='select channel that will be used for estimating stitching parameters. Default is to use first channel.')
     parser.add_argument('--make_preview', action='store_true',
@@ -22,18 +26,18 @@ def main():
                         help='specify space separated channel names to stitch (e.g. "DAPI" "ALEXA 657"). Default to stitch all channels.')
     parser.add_argument('--correct_illumination_in_channels', type=str, nargs='+', default='none',
                         help='specify space separated channel names that require correction of bad illumination (e.g. "DAPI"), RNA spot channels usually do not need correction.\nall: will apply correction to all channels. \nnone: will not apply to any.')
-    parser.add_argument('--mode', type=str, required=True,
-                        help='stack: produce z-stacks.\nmaxz: produce max z-projections instead of z-stacks.')
     parser.add_argument('--adaptive', action='store_true',
                         help='turn on adaptive estimation of image translation')
     parser.add_argument('--save_param', action='store_true', default=False,
                         help='will save parameters estimated during stitching into 3 csv files (image_ids, x_sizes, y sizes)')
     parser.add_argument('--load_param', type=str, default='none',
                         help='specify folder that contais the following csv files: image_ids.csv, x_size.csv, y_sizes.csv, that contain previously estimated parameters')
-    parser.add_argument('--scan', type=str, default='none', required=True,
-                        help='specify scanning mode (auto or manual)')
-    parser.add_argument('--output_name', type=str, default='', help='specify name of the output image. Default ot use name from Index.idx.xml')
-    parser.add_argument('--fovs', type=str, default=None, help='specify a comma separated, without spaces, subset of fields of view you want to use for stitching')
+    parser.add_argument('--output_name', type=str, default='',
+                        help='specify name of the output image. Default ot use name from Index.idx.xml')
+    parser.add_argument('--fovs', type=str, default=None,
+                        help='specify a comma separated, without spaces, subset of fields of view you want to use for stitching')
+    parser.add_argument('--extra_meta', type=str, default=None,
+                        help='JSON formatted extra metadata ("channel_names")')
     args = parser.parse_args()
 
 
@@ -53,8 +57,6 @@ def main():
     stitcher.save_stitching_parameters = args.save_param
     stitcher.fovs = args.fovs
     stitcher.stitch()
-
-
 
 
 if __name__ == '__main__':
