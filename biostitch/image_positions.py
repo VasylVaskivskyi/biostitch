@@ -246,19 +246,30 @@ def get_image_sizes_auto(tag_Images, reference_channel):
     default_img_height = int(tag_Images[0].find('ImageSizeY').text)
 
     # centering coordinates to 0,0
-    # TODO check for cases where x and y are positive
     leftmost = min(x_pos)
-    rightmost = abs(leftmost) + max(x_pos)
     top = max(y_pos)
-    bottom = min(y_pos)
+
     if leftmost < 0:
+        leftmost = abs(leftmost)
         if top < 0:
-            img_pos = [(pos[0] + abs(leftmost), abs(pos[1]) - abs(top), pos[2]) for pos in img_pos]
-            x_pos = [i + abs(leftmost) for i in x_pos]
-            y_pos = [(i*(-1) - abs(top)) for i in y_pos]
+            top = abs(top)
+            img_pos = [(pos[0] + leftmost, abs(pos[1]) - top, pos[2]) for pos in img_pos]
+            x_pos = [i + leftmost for i in x_pos]
+            y_pos = [abs(i) - top for i in y_pos]
         else:
-            img_pos = [(pos[0] + abs(leftmost), pos[1], pos[2]) for pos in img_pos]
-            x_pos = [i + abs(leftmost) for i in x_pos]
+            img_pos = [(pos[0] + leftmost, top - pos[1], pos[2]) for pos in img_pos]
+            x_pos = [i + leftmost for i in x_pos]
+            y_pos = [top - i for i in y_pos]
+    else:
+        if top < 0:
+            top = abs(top)
+            img_pos = [(pos[0] - leftmost, abs(pos[1]) - top, pos[2]) for pos in img_pos]
+            x_pos = [i - leftmost for i in x_pos]
+            y_pos = [abs(i) - top for i in y_pos]
+        else:
+            img_pos = [(pos[0] - leftmost, top - pos[1], pos[2]) for pos in img_pos]
+            x_pos = [i - leftmost for i in x_pos]
+            y_pos = [top - i for i in y_pos]
 
     y_range = set(y_pos)
     y_range_sorted = sorted(y_range)
