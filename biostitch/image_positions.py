@@ -14,8 +14,7 @@ def assign_rel_pos(array):
         array[0][0] > 0
         array[0][0] < 0
     except IndexError:
-        print('Error: Not enough fields of view for stitching')
-        exit()
+        return []
 
     if array[0][0] > 0:
         for i in range(0, len(array)):

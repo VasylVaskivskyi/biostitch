@@ -26,7 +26,7 @@ class ImageStitcher:
         self._is_adaptive = True
         self._make_preview = True
         self._save_param = ''
-        self._load_param_path = ''
+        self._load_param_path = 'none'
         self._img_name = ''
         self._fovs = None
         self._extra_meta = None

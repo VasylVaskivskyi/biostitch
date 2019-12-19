@@ -66,7 +66,7 @@ class AdaptiveShiftEstimation:
                 else:
                     dataframe.iloc[i, :] = int(round(row_medians[i]))
         elif axis == 0:
-            ncols = len(dataframe.index)
+            ncols = len(dataframe.columns)
             col_medians = list(dataframe.median(axis=0, skipna=True))
             for i in range(0, ncols):
                 if pd.isna(col_medians[i]):
