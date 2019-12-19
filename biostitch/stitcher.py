@@ -131,7 +131,7 @@ class ImageStitcher:
     def estimate_image_sizes(self, tag_Images, field_path_list):
         if self._load_param_path == 'none':
             if self._scan == 'auto':
-                micro_img_sizes = get_image_sizes_auto(tag_Images, self._reference_channel)
+                micro_img_sizes = get_image_sizes_auto(tag_Images, self._reference_channel, self._fovs)
                 ids = []
                 x_size = []
                 y_size = []

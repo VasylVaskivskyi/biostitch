@@ -1,4 +1,5 @@
 __pycache__
 .idea
 .*.sw?
+*.pyc
 biostitch.egg-info

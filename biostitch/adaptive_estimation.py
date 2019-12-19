@@ -138,7 +138,7 @@ class AdaptiveShiftEstimation:
             x_size.iloc[i, :] = self.find_shift_series(images, ids.iloc[i, :], self._micro_x_size.iloc[i, :], 'horizontal')
         x_size = self.use_median(x_size, axis=0)
         x_size.iloc[:, 0] = self._default_image_shape[1]
-        
+
         col_means = list(x_size.mean(axis=0))
         for i in range(0, ncols):
             x_size.iloc[:, i] = int(round(col_means[i]))

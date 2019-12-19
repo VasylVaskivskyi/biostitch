@@ -125,8 +125,11 @@ def crop_images_scan_auto(images, ids, x_sizes, y_sizes):
     default_img_shape = images[0].shape
     dtype = images[0].dtype.type
     r_images = []
+
     for j, _id in enumerate(ids):
-        if _id == 'zeros':
+        if _id == 'zeros' and (j == 0 or j == len(ids) - 1):
+            continue
+        elif _id == 'zeros':
             img = np.zeros((y_sizes[j], x_sizes[j]), dtype=dtype)
         else:
             x_shift = default_img_shape[1] - x_sizes[j]
@@ -146,13 +149,16 @@ def stitch_images(images, ids, x_size, y_size, scan_mode):
         plane_height = sum([row[0] for row in y_size])
         res = np.zeros((plane_height, plane_width), dtype=dtype)
         nrows = len(y_size)
+        left_pad = [row[0] for row in x_size]
+        right_pad = [sum(row[:-1]) for row in x_size]
         y_pos_plane = list(np.cumsum([row[0] for row in y_size]))
         y_pos_plane.insert(0, 0)
 
         for row in range(0, nrows):
             f = y_pos_plane[row]  # from
             t = y_pos_plane[row + 1]  # to
-            res[f:t, :] = np.concatenate(crop_images_scan_auto(images, ids[row], x_size[row], y_size[row]), axis=1)
+
+            res[f:t, left_pad[row]:right_pad[row]] = np.concatenate(crop_images_scan_auto(images, ids[row], x_size[row], y_size[row]), axis=1)
     elif scan_mode == 'manual':
         plane_width = sum(x_size.iloc[0, :])
         plane_height = sum(y_size.iloc[:, 0])
