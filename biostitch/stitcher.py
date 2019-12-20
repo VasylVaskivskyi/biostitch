@@ -197,9 +197,9 @@ class ImageStitcher:
         self._preview_ome_meta = create_ome_metadata(self._img_name, width, height, 1, 1, 1, 'uint16',
                                           preview_meta, tag_Images, self._measurement_time, self._extra_meta)
 
-    def generate_preview(self, ids, x_size, y_size, metadata, fovs=None):
+    def generate_preview(self, ids, x_size, y_size, metadata, images=None):
         print('generating max z preview')
-        z_proj = stitch_images(fovs, ids, x_size, y_size, self._scan)
+        z_proj = stitch_images(images, ids, x_size, y_size, self._scan)
         tif.imwrite(self._out_dir + 'preview.tif', z_proj, description=metadata)
         print('preview is available at ' + self._out_dir + 'preview.tif')
 

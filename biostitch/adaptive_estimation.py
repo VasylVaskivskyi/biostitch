@@ -78,6 +78,9 @@ class AdaptiveShiftEstimation:
 
     def find_pairwise_shift(self, img1, img2, overlap, mode):
         if mode == 'horizontal':
+            if overlap <= self._default_image_shape[0]:
+                return 0
+
             img1_overlap = img1.shape[1] - overlap
             img2_overlap = overlap
             part1 = cv.normalize(img1[:, img1_overlap:], None, 0, 1, cv.NORM_MINMAX, cv.CV_32F)
@@ -89,10 +92,14 @@ class AdaptiveShiftEstimation:
             else:
                 pairwise_shift = self._default_image_shape[1] - hor_shift
         elif mode == 'vertical':
+            if overlap >= self._default_image_shape[0]:
+                return 0
+
             img1_overlap = img1.shape[0] - overlap
             img2_overlap = overlap
             part1 = cv.normalize(img1[img1_overlap:, :], None, 0, 1, cv.NORM_MINMAX, cv.CV_32F)
             part2 = cv.normalize(img2[:img2_overlap, :], None, 0, 1, cv.NORM_MINMAX, cv.CV_32F)
+
             shift, error = cv.phaseCorrelate(part1, part2)
             ver_shift = shift[1]
             if ver_shift < 0:
