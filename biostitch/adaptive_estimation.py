@@ -70,15 +70,15 @@ class AdaptiveShiftEstimation:
             col_medians = list(dataframe.median(axis=0, skipna=True))
             for i in range(0, ncols):
                 if pd.isna(col_medians[i]):
-                    dataframe.iloc[i, :] = np.nan
+                    dataframe.iloc[:, i] = np.nan
                 else:
-                    dataframe.iloc[i, :] = int(round(col_medians[i]))
+                    dataframe.iloc[:, i] = int(round(col_medians[i]))
 
         return dataframe
 
     def find_pairwise_shift(self, img1, img2, overlap, mode):
         if mode == 'horizontal':
-            if overlap <= self._default_image_shape[0]:
+            if overlap >= self._default_image_shape[1]:
                 return 0
 
             img1_overlap = img1.shape[1] - overlap
