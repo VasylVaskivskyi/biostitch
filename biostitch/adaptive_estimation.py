@@ -178,7 +178,7 @@ class AdaptiveShiftEstimation:
             micro_x_sizes_sub = []
             micro_y_sizes_sub = []
             for row in micro_ids:
-                if row in cluster:
+                if row[0] in cluster:
                     micro_ids_sub.append(micro_ids[row])
                     micro_x_sizes_sub.append(micro_x_sizes)
                     micro_y_sizes_sub.append(micro_y_sizes)
