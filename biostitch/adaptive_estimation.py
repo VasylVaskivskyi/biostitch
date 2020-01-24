@@ -188,9 +188,9 @@ class AdaptiveShiftEstimation:
             print('\n', micro_x_sizes_sub)
             print('\n', micro_y_sizes_sub)
             this_cluster_x_sizes, this_cluster_y_sizes = self.calculate_image_sizes_scan_auto(images, micro_ids_sub, micro_x_sizes_sub, micro_y_sizes_sub)
-            ids.append(micro_ids_sub)
-            x_sizes.append(this_cluster_x_sizes)
-            y_sizes.append(this_cluster_y_sizes)
+            ids.extend(micro_ids_sub)
+            x_sizes.extend(this_cluster_x_sizes)
+            y_sizes.extend(this_cluster_y_sizes)
         return ids, x_sizes, y_sizes
 
     def calculate_image_sizes_scan_auto(self, images, micro_ids, micro_x_sizes, micro_y_sizes):
