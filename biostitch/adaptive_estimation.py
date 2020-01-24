@@ -162,23 +162,25 @@ class AdaptiveShiftEstimation:
         micro_x_sizes = self._micro_x_size
         micro_y_sizes = self._micro_y_size
 
+
         rows_in_clusters = []
         for c in range(0, len(ids_in_clusters)):
             this_cluster_rows = []
             for row in micro_ids:
-                if row[0] in ids_in_clusters[c]:
+                if row[1] in ids_in_clusters[c] and row[1] != 'zeros':
                     this_cluster_rows.append(row)
-            rows_in_clusters.append(set(this_cluster_rows))
+            rows_in_clusters.append(this_cluster_rows)
         print(rows_in_clusters)
         ids = []
         x_sizes = []
         y_sizes = []
-        for cluster in rows_in_clusters:
+        for cls in rows_in_clusters:
+            cluster = list(chain(*cls))
             micro_ids_sub = []
             micro_x_sizes_sub = []
             micro_y_sizes_sub = []
             for row in range(0, len(micro_ids)):
-                if micro_ids[row][0] in cluster:
+                if micro_ids[row][1] in cluster and micro_ids[row][1] != 'zeros':
                     micro_ids_sub.append(micro_ids[row])
                     micro_x_sizes_sub.append(micro_x_sizes[row])
                     micro_y_sizes_sub.append(micro_y_sizes[row])
@@ -346,7 +348,7 @@ class AdaptiveShiftEstimation:
 
     @property
     def micro_y_size(self):
-        return self._micro_x_size
+        return self._micro_y_size
     @micro_y_size.setter
     def micro_y_size(self, value):
         self._micro_y_size = value
