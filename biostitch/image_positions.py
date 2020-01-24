@@ -1,3 +1,4 @@
+from itertools import chain
 import xml.etree.ElementTree as ET
 import numpy as np
 import pandas as pd
@@ -76,7 +77,7 @@ def load_necessary_xml_tags(xml_path):
 
     xml = ET.fromstring(xml_file)
     tag_Images = xml.find('Images')
-    tag_Name = xml.find('Plates').find('Plate').find('Name').text.replace(' ','_')
+    tag_Name = xml.find('Plates').find('Plate').find('Name').text.replace(' ', '_')
     tag_MeasurementStartTime = xml.find('Plates').find('Plate').find('MeasurementStartTime').text
     return tag_Images, tag_Name, tag_MeasurementStartTime
 
@@ -252,7 +253,8 @@ def get_image_sizes_manual(tag_Images, reference_channel, fovs):
 def get_image_sizes_auto(tag_Images, reference_channel, fovs):
     """specify path to read xml file
     function finds metadata about image location, computes
-    relative location to central image, and size in pixels of each image"""
+    relative location to central image, and size in pixels of each image
+    """
     # get microscope coordinates of images from xml file
     x_pos, y_pos, img_pos = get_positions_from_xml_scan_mode_auto(tag_Images, reference_channel, fovs)
     default_img_width = int(tag_Images[0].find('ImageSizeX').text)
@@ -284,12 +286,47 @@ def get_image_sizes_auto(tag_Images, reference_channel, fovs):
             x_pos = [i - leftmost for i in x_pos]
             y_pos = [top - i for i in y_pos]
 
+    from scipy.cluster.hierarchy import fclusterdata
+    z = np.array(list(zip(x_pos, y_pos)))
+    clusters = fclusterdata(z, t=default_img_height, criterion='distance')
+
+    c = clusters[0]
+    c_ids = []
+    this_cluster_ids = []
+    this_cluster_ypos = []
+    c_ypos = []
+    for i in range(0, len(clusters)):
+        this_val = clusters[i]
+        if this_val == c:
+            this_cluster_ids.append(i)
+            this_cluster_ypos.append(y_pos[i])
+        else:
+            c = this_val
+            c_ids.append(this_cluster_ids)
+            c_ypos.append(this_cluster_ypos)
+            this_cluster_ids = [i]
+            this_cluster_ypos = [y_pos[i]]
+        if i == len(clusters) - 1:
+            c_ids.append(this_cluster_ids)
+            c_ypos.append(this_cluster_ypos)
+
+    ids_in_clusters = [set(c) for c in c_ids]
+    y_pos_in_clusters = [sorted(set(c)) for c in c_ypos]
+
     y_range = set(y_pos)
     y_range_sorted = sorted(y_range)
-    y_sizes = [default_img_height]
+    y_sizes = []
 
-    for i in range(0, len(y_range_sorted)-1):
-        y_sizes.append(abs(y_range_sorted[i] - y_range_sorted[i+1]))
+    for cluster in y_pos_in_clusters:
+        for i in range(1, len(cluster)):
+            y_sizes.append(cluster[i] - cluster[i - 1])
+        y_sizes.append(default_img_height)
+
+    y_pos_in_clusters = list(chain(*y_pos_in_clusters))
+
+    for i in range(1, len(y_range_sorted)):
+        y_sizes.append(y_range_sorted[i] - y_range_sorted[i-1])
+    y_sizes.append(default_img_height)
 
     # image coordinates arranged in rows by same y-coordinate
     row_list = []
@@ -342,7 +379,16 @@ def get_image_sizes_auto(tag_Images, reference_channel, fovs):
     # total_height = sum(y_sizes)
     # total_width = max_width
 
-    return img_sizes
+    ids = []
+    x_size = []
+    y_size = []
+    for row in img_sizes:
+        x_size.append([i[0] for i in row])
+        y_size.append([i[1] for i in row])
+        ids.append([i[2] for i in row])
+
+
+    return ids, x_size, y_size, ids_in_clusters #, ypos_in_clusters
 
 # ----------- Get full path of each image im xml ----------
 

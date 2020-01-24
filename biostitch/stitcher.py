@@ -38,6 +38,7 @@ class ImageStitcher:
         self._ome_meta = ''
         self._preview_ome_meta = ''
         self._channel_ids = {}
+        self._y_pos = None
 
 
     def stitch(self):
@@ -45,6 +46,8 @@ class ImageStitcher:
         print('\nstarted', st)
 
         self.check_dir_exist()
+        self.check_scan_modes()
+
         tag_Images, field_path_list, plane_path_list = self.load_metadata()
         ids, x_size, y_size = self.estimate_image_sizes(tag_Images, field_path_list)
         self.generate_ome_meta(self._channel_ids, x_size, y_size, tag_Images, plane_path_list)
@@ -69,6 +72,15 @@ class ImageStitcher:
         if self._xml_path is None:
             self._xml_path = self._img_dir + 'Index.idx.xml'
 
+    def check_scan_modes(self):
+        available_scan_modes = ('auto', 'manual')
+        if self._scan not in available_scan_modes:
+            raise ValueError('Incorrect scan mode. Available scan modes ' + ', '.join(available_scan_modes))
+
+        available_stitching_modes = ('stack', 'maxz')
+        if self._stitching_mode not in available_stitching_modes:
+            raise ValueError(
+                'Incorrect stitching mode. Available stitching modes ' + ', '.join(available_stitching_modes))
 
     def load_metadata(self):
         tag_Images, tag_Name, tag_MeasurementStartTime = load_necessary_xml_tags(self._xml_path)
@@ -78,7 +90,7 @@ class ImageStitcher:
         channel_names = list(plane_path_list.keys())
         channel_ids = {ch: i for i, ch in enumerate(channel_names)}
 
-        if type(self._stitch_only_ch) == str:
+        if isinstance(self._stitch_only_ch, str):
             self._stitch_only_ch = [self._stitch_only_ch]
 
         if self._stitch_only_ch == ['all']:
@@ -96,7 +108,7 @@ class ImageStitcher:
             nchannels = len(self._stitch_only_ch)
             channel_names = self._stitch_only_ch
 
-        if type(self._ill_cor_ch) == str:
+        if isinstance(self._ill_cor_ch, str):
             self._ill_cor_ch = [self._ill_cor_ch]
         if self._ill_cor_ch == ['all']:
             self._ill_cor_ch = {ch: True for ch in channel_names}
@@ -105,24 +117,14 @@ class ImageStitcher:
         else:
             self._ill_cor_ch = {ch: (True if ch in self._ill_cor_ch else False) for ch in channel_names}
 
-
-        available_scan_modes = ('auto', 'manual')
-        if self._scan not in available_scan_modes:
-            raise ValueError('Incorrect scan mode. Available scan modes ' + ', '.join(available_scan_modes))
-
-        available_stitching_modes = ('stack', 'maxz')
-        if self._stitching_mode not in available_stitching_modes:
-            raise ValueError('Incorrect stitching mode. Available stitching modes ' + ', '.join(available_stitching_modes))
-
         self._channel_ids = {k: v for k, v in channel_ids.items() if k in channel_names}
         self._channel_names = channel_names
         self._nchannels = nchannels
         self._measurement_time = tag_MeasurementStartTime
         if self._img_name == '':
             self._img_name = tag_Name
-        if not self._img_name.endswith('.tif'):
+        if not self._img_name.endswith(('.tif', '.tiff')):
             self._img_name += '.tif'
-        
         if self._fovs is not None:
             self._fovs = self._fovs.split(',')
 
@@ -130,16 +132,10 @@ class ImageStitcher:
 
     def estimate_image_sizes(self, tag_Images, field_path_list):
         if self._load_param_path == 'none':
-            if self._scan == 'auto':
-                micro_img_sizes = get_image_sizes_auto(tag_Images, self._reference_channel, self._fovs)
-                ids = []
-                x_size = []
-                y_size = []
-                for row in micro_img_sizes:
-                    x_size.append([i[0] for i in row])
-                    y_size.append([i[1] for i in row])
-                    ids.append([i[2] for i in row])
 
+            if self._scan == 'auto':
+                ids, x_size, y_size, ids_in_clusters, self._y_pos = get_image_sizes_auto(tag_Images, self._reference_channel, self._fovs)
+                micro_y_size = y_size.copy()
             elif self._scan == 'manual':
                 ids, x_size, y_size = get_image_sizes_manual(tag_Images, self._reference_channel, self._fovs)
 
@@ -151,7 +147,14 @@ class ImageStitcher:
                 estimator.micro_ids = ids
                 estimator.micro_x_size = x_size
                 estimator.micro_y_size = y_size
-                x_size, y_size = estimator.estimate(z_max_img_list)
+                if self._scan == 'auto':
+                    estimator.ids_in_clusters = ids_in_clusters
+                ids, x_size, y_size = estimator.estimate(z_max_img_list)
+
+                if self._scan == 'auto':
+                    for row in range(0, len(y_size)):
+                        diff = y_size[row][0] - micro_y_size[row][0]
+                        self._y_pos[row + 1] += diff
 
                 if self._make_preview:
                     self.generate_preview(ids, x_size, y_size, self._preview_ome_meta, z_max_img_list)
@@ -168,6 +171,9 @@ class ImageStitcher:
         if self._save_param:
             print('saving_parameters')
             save_parameters(self._out_dir, self._scan, ids, x_size, y_size)
+
+        # TODO take difference of micro_y_sizes and y_sizes, and add it to y_pos to calculate image positions
+
 
         return ids, x_size, y_size
 
@@ -188,14 +194,14 @@ class ImageStitcher:
 
         if self._stitching_mode == 'stack':
             self._ome_meta = create_ome_metadata(self._img_name, width, height, self._nchannels, nplanes, 1, 'uint16', final_meta,
-                                      tag_Images, self._measurement_time, self._extra_meta)
+                                                 tag_Images, self._measurement_time, self._extra_meta)
         elif self._stitching_mode == 'maxz':
             self._ome_meta = create_ome_metadata(self._img_name, width, height, self._nchannels, 1, 1, 'uint16', final_meta,
-                                      tag_Images, self._measurement_time, self._extra_meta)
+                                                 tag_Images, self._measurement_time, self._extra_meta)
 
         preview_meta = {self._reference_channel: final_meta[self._reference_channel]}
         self._preview_ome_meta = create_ome_metadata(self._img_name, width, height, 1, 1, 1, 'uint16',
-                                          preview_meta, tag_Images, self._measurement_time, self._extra_meta)
+                                                     preview_meta, tag_Images, self._measurement_time, self._extra_meta)
 
     def generate_preview(self, ids, x_size, y_size, metadata, images=None):
         print('generating max z preview')
@@ -208,26 +214,26 @@ class ImageStitcher:
         gc.collect()
 
         if self._stitching_mode == 'stack':
-            final_path_reg = self._out_dir + self._img_name
+            output_path_stack = self._out_dir + self._img_name
             delete = '\b'*20
-            with TiffWriter(final_path_reg, bigtiff=True) as TW:
+            with TiffWriter(output_path_stack, bigtiff=True) as TW:
                 for i, channel in enumerate(self._channel_names):
                     print('\nprocessing channel no.{0}/{1} {2}'.format(i + 1, self._nchannels, channel))
                     print('started at', datetime.now())
                     for j, plane in enumerate(plane_path_list[channel]):
                         print('{0}plane {1}/{2}'.format(delete, j + 1, nplanes), end='', flush=True)
-                        TW.save(stitch_plane(plane, ids, x_size, y_size,  self._ill_cor_ch[channel], self._scan),
+                        TW.save(stitch_plane(plane, ids, x_size, y_size, self._y_pos, self._ill_cor_ch[channel], self._scan),
                                 photometric='minisblack', contiguous=True, description=metadata)
 
         elif self._stitching_mode == 'maxz':
-            final_path_maxz = self._out_dir + 'maxz_' + self._img_name
-            with TiffWriter(final_path_maxz, bigtiff=True) as TW:
+            output_path_maxz = self._out_dir + 'maxz_' + self._img_name
+            with TiffWriter(output_path_maxz, bigtiff=True) as TW:
                 for i, channel in enumerate(self._channel_names):
                     print('\nprocessing channel no.{0}/{1} {2}'.format(i + 1, self._nchannels, channel))
                     print('started at', datetime.now())
 
                     TW.save(stitch_z_projection(
-                            channel, field_path_list, ids, x_size, y_size, self._ill_cor_ch[channel], self._scan),
+                            channel, field_path_list, ids, x_size, y_size, self._y_pos, self._ill_cor_ch[channel], self._scan),
                             photometric='minisblack', contiguous=True, description=metadata)
 
     def write_separate_ome_xml(self):

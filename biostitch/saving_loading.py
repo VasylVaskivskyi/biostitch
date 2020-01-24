@@ -1,5 +1,5 @@
-import pandas as pd
 import re
+import pandas as pd
 
 
 def load_parameters(dir_path, scan):
