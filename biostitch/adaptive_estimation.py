@@ -157,7 +157,7 @@ class AdaptiveShiftEstimation:
 
     def estimate_image_sizes_scan_auto(self, images):
         # size from microscope xml metadata
-        ids_in_clusters = self.ids_in_clusters
+        ids_in_clusters = self._ids_in_clusters
         micro_ids = self._micro_ids
         micro_x_sizes = self._micro_x_size
         micro_y_sizes = self._micro_y_size
@@ -169,7 +169,7 @@ class AdaptiveShiftEstimation:
                 if row[0] in ids_in_clusters[c]:
                     this_cluster_rows.append(row)
             rows_in_clusters.append(set(this_cluster_rows))
-
+        print(rows_in_clusters)
         ids = []
         x_sizes = []
         y_sizes = []
