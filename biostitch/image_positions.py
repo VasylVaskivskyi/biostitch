@@ -388,7 +388,7 @@ def get_image_sizes_auto(tag_Images, reference_channel, fovs):
         ids.append([i[2] for i in row])
 
 
-    return ids, x_size, y_size, ids_in_clusters #, ypos_in_clusters
+    return ids, x_size, y_size, ids_in_clusters, ypos_in_clusters
 
 # ----------- Get full path of each image im xml ----------
 
