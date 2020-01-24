@@ -152,7 +152,7 @@ class ImageStitcher:
                 ids, x_size, y_size = estimator.estimate(z_max_img_list)
 
                 if self._scan == 'auto':
-                    for row in range(0, len(y_size)):
+                    for row in range(0, len(y_size)-1):
                         diff = y_size[row][0] - micro_y_size[row][0]
                         self._y_pos[row + 1] += diff
 
