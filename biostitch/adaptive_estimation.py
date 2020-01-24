@@ -177,11 +177,11 @@ class AdaptiveShiftEstimation:
             micro_ids_sub = []
             micro_x_sizes_sub = []
             micro_y_sizes_sub = []
-            for row in micro_ids:
-                if row[0] in cluster:
+            for row in range(0, len(micro_ids)):
+                if micro_ids[row][0] in cluster:
                     micro_ids_sub.append(micro_ids[row])
-                    micro_x_sizes_sub.append(micro_x_sizes)
-                    micro_y_sizes_sub.append(micro_y_sizes)
+                    micro_x_sizes_sub.append(micro_x_sizes[row])
+                    micro_y_sizes_sub.append(micro_y_sizes[row])
 
             this_cluster_x_sizes, this_cluster_y_sizes = self.calculate_image_sizes_scan_auto(images, micro_ids_sub, micro_x_sizes_sub, micro_y_sizes_sub)
             ids.append(micro_ids_sub)
