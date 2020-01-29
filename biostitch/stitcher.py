@@ -157,7 +157,7 @@ class ImageStitcher:
                         self._y_pos[row + 1] += diff
 
                 if self._make_preview:
-                    self.generate_preview(ids, x_size, y_size, self._preview_ome_meta, z_max_img_list)
+                    self.generate_preview(ids, x_size, y_size, self._y_pos, self._preview_ome_meta, z_max_img_list)
                 del z_max_img_list
                 gc.collect()
         else:
@@ -171,9 +171,6 @@ class ImageStitcher:
         if self._save_param:
             print('saving_parameters')
             save_parameters(self._out_dir, self._scan, ids, x_size, y_size)
-
-        # TODO take difference of micro_y_sizes and y_sizes, and add it to y_pos to calculate image positions
-
 
         return ids, x_size, y_size
 
@@ -203,9 +200,9 @@ class ImageStitcher:
         self._preview_ome_meta = create_ome_metadata(self._img_name, width, height, 1, 1, 1, 'uint16',
                                                      preview_meta, tag_Images, self._measurement_time, self._extra_meta)
 
-    def generate_preview(self, ids, x_size, y_size, metadata, images=None):
+    def generate_preview(self, ids, x_size, y_size, y_pos, metadata, images=None):
         print('generating max z preview')
-        z_proj = stitch_images(images, ids, x_size, y_size, self._scan)
+        z_proj = stitch_images(images, ids, x_size, y_size, y_pos, self._scan)
         tif.imwrite(self._out_dir + 'preview.tif', z_proj, description=metadata)
         print('preview is available at ' + self._out_dir + 'preview.tif')
 
