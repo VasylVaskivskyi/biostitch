@@ -1,12 +1,14 @@
+from typing import List, Union, Optional
 import os
 import re
 import numpy as np
+import pandas as pd
 import dask
 import tifffile as tif
 import cv2 as cv
+from .my_types import Image, DF
 
-
-def alphaNumOrder(string):
+def alphaNumOrder(string: str) -> str:
     """ Returns all numbers on 5 digits to let sort the string with numeric order.
     Ex: alphaNumOrder("a6b12.125")  ==> "a00006b00012.00125"
     """
@@ -14,7 +16,7 @@ def alphaNumOrder(string):
                     else x for x in re.split(r'(\d+)', string)])
 
 
-def read_images(path, is_dir):
+def read_images(path: str, is_dir: bool) -> list:
     """ Rread images in natural order (with respect to numbers) """
 
     allowed_extensions = ('tif', 'tiff')
@@ -36,7 +38,7 @@ def read_images(path, is_dir):
     return img_list
 
 
-def equalize_histogram(img_list):
+def equalize_histogram(img_list: List[Image]) -> list:
     """ Function for adaptive normalization of image histogram CLAHE """
     nrows, ncols = img_list[0].shape
     grid_size = [int(round(max((ncols, nrows)) / 20))] * 2
@@ -51,12 +53,12 @@ def equalize_histogram(img_list):
     return img_list
 
 
-def z_project(field):
+def z_project(field: str) -> Image:
     """ Wrapper function to support multiprocessing """
     return np.max(np.stack(read_images(field, is_dir=False), axis=0), axis=0)
 
 
-def create_z_projection_for_fov(channel_name, path_list):
+def create_z_projection_for_fov(channel_name: str, path_list: list) -> List[Image]:
     """ Read images, convert them into stack, get max z-projection"""
     channel = path_list[channel_name]
     task = [dask.delayed(z_project)(field) for field in channel]
@@ -67,7 +69,9 @@ def create_z_projection_for_fov(channel_name, path_list):
     return z_max_img_list
 
 
-def stitch_z_projection(channel_name, fields_path_list, ids, x_size, y_size, y_pos, do_illum_cor, scan_mode):
+def stitch_z_projection(channel_name: str, fields_path_list: list, 
+                        ids: Union[list, DF], x_size: Union[list, DF], y_size: Union[list, DF], 
+                        y_pos: Optional[list], do_illum_cor: bool, scan_mode: str) -> List[Image]:
     """ Create max z projection for each field of view """
     z_max_fov_list = create_z_projection_for_fov(channel_name, fields_path_list)
     if do_illum_cor:
@@ -79,7 +83,8 @@ def stitch_z_projection(channel_name, fields_path_list, ids, x_size, y_size, y_p
     return z_proj
 
 
-def crop_images_scan_manual(images, ids, x_sizes, y_sizes):
+def crop_images_scan_manual(images: List[Image], ids: Union[list, DF], 
+                            x_sizes: Union[list, DF], y_sizes: Union[list, DF]) -> List[Image]:
     """ Read data from dataframe ids, series x_sizes and y_sizes and crop images """
     x_sizes = x_sizes.to_list()
     y_sizes = y_sizes.to_list()
@@ -99,7 +104,8 @@ def crop_images_scan_manual(images, ids, x_sizes, y_sizes):
     return r_images
 
 
-def crop_images_scan_auto(images, ids, x_sizes, y_sizes):
+def crop_images_scan_auto(images: List[Image], ids: Union[list, DF], 
+                          x_sizes: Union[list, DF], y_sizes: Union[list, DF]) -> List[Image]:
     default_img_shape = images[0].shape
     dtype = images[0].dtype.type
     r_images = []
@@ -119,7 +125,9 @@ def crop_images_scan_auto(images, ids, x_sizes, y_sizes):
     return r_images
 
 
-def stitch_images(images, ids, x_size, y_size, y_pos, scan_mode):
+def stitch_images(images: List[Image], ids: Union[list, DF], 
+                  x_size: Union[list, DF], y_size: Union[list, DF],
+                  y_pos: Optional[list], scan_mode: str) -> List[Image]:
     """ Stitch cropped images by concatenating them horizontally and vertically """
 
     dtype = images[0].dtype.type
@@ -165,7 +173,9 @@ def stitch_images(images, ids, x_size, y_size, y_pos, scan_mode):
     return res
 
 
-def stitch_plane(plane_paths, ids, x_size, y_size, y_pos, do_illum_cor, scan_mode):
+def stitch_plane(plane_paths: List[str], ids: Union[list, DF], 
+                  x_size: Union[list, DF], y_size: Union[list, DF],
+                  y_pos: Optional[list], do_illum_cor: bool, scan_mode: str) -> Image:
     """ Do histogram normalization and stitch multiple images into one plane """
     images = read_images(plane_paths, is_dir=False)
     dtype = images[0].dtype.type

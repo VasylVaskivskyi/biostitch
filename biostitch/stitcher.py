@@ -140,7 +140,7 @@ class ImageStitcher:
                 ids, x_size, y_size = get_image_sizes_manual(tag_Images, self._reference_channel, self._fovs)
 
             if self._is_adaptive:
-                print('estimating image translation')
+                print('estimating image shifts')
                 z_max_img_list = create_z_projection_for_fov(self._reference_channel, field_path_list)
                 estimator = AdaptiveShiftEstimation()
                 estimator.scan = self._scan
