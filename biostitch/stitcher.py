@@ -126,7 +126,7 @@ class ImageStitcher:
         if not self._img_name.endswith(('.tif', '.tiff')):
             self._img_name += '.tif'
         if self._fovs is not None:
-            self._fovs = self._fovs.split(',')
+            self._fovs = [int(f) for f in self._fovs.split(',')]
 
         return tag_Images, field_path_list, plane_path_list
 
