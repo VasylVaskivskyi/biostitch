@@ -124,7 +124,7 @@ def get_positions_from_xml_scan_mode_auto(tag_Images, reference_channel, fovs):
     if fovs is not None:
         for img in tag_Images:
             if img.find('ChannelName').text == reference_channel and img.find('PlaneID').text == '1' and int(img.find('FieldID').text) in fovs:
-                print(img.find('ChannelName').text, img.find('PlaneID').text, img.find('FieldID').text)
+                print('fov', img.find('ChannelName').text, img.find('PlaneID').text, img.find('FieldID').text)
                 x_coord = '{:.9f}'.format(float(img.find('PositionX').text))  # limit precision to nm
                 y_coord = '{:.9f}'.format(float(img.find('PositionY').text))
 
@@ -135,6 +135,7 @@ def get_positions_from_xml_scan_mode_auto(tag_Images, reference_channel, fovs):
     else:
         for img in tag_Images:
             if img.find('ChannelName').text == reference_channel and img.find('PlaneID').text == '1':
+                print('not fovs', img.find('ChannelName').text, img.find('PlaneID').text, img.find('FieldID').text)
                 x_coord = '{:.9f}'.format(float(img.find('PositionX').text))  # limit precision to nm
                 y_coord = '{:.9f}'.format(float(img.find('PositionY').text))
 
