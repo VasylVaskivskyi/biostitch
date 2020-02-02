@@ -113,7 +113,6 @@ def get_positions_from_xml(tag_Images, reference_channel, fovs):
 
 def get_positions_from_xml_scan_mode_auto(tag_Images, reference_channel, fovs):
     """read xml metadata and find image metadata (position, channel name) """
-    print(fovs)
     x_resol = '{:.20f}'.format(float(tag_Images[0].find('ImageResolutionX').text))
     y_resol = '{:.20f}'.format(float(tag_Images[0].find('ImageResolutionY').text))
 
@@ -124,7 +123,6 @@ def get_positions_from_xml_scan_mode_auto(tag_Images, reference_channel, fovs):
     if fovs is not None:
         for img in tag_Images:
             if img.find('ChannelName').text == reference_channel and img.find('PlaneID').text == '1' and int(img.find('FieldID').text) in fovs:
-                print('fov', img.find('ChannelName').text, img.find('PlaneID').text, img.find('FieldID').text)
                 x_coord = '{:.9f}'.format(float(img.find('PositionX').text))  # limit precision to nm
                 y_coord = '{:.9f}'.format(float(img.find('PositionY').text))
 
@@ -135,7 +133,6 @@ def get_positions_from_xml_scan_mode_auto(tag_Images, reference_channel, fovs):
     else:
         for img in tag_Images:
             if img.find('ChannelName').text == reference_channel and img.find('PlaneID').text == '1':
-                print('not fovs', img.find('ChannelName').text, img.find('PlaneID').text, img.find('FieldID').text)
                 x_coord = '{:.9f}'.format(float(img.find('PositionX').text))  # limit precision to nm
                 y_coord = '{:.9f}'.format(float(img.find('PositionY').text))
 
@@ -314,7 +311,8 @@ def get_image_sizes_auto(tag_Images, reference_channel, fovs):
 
     ids_in_clusters = [set(c) for c in c_ids]
     y_pos_in_clusters = [sorted(set(c)) for c in c_ypos]
-
+    print(y_pos_in_clusters)
+    print(ids_in_clusters)
     y_range = set(y_pos)
     y_range_sorted = sorted(y_range)
     y_sizes = []
