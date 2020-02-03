@@ -261,6 +261,8 @@ def get_image_sizes_auto(tag_Images, reference_channel, fovs):
 
     from scipy.cluster.hierarchy import fclusterdata
     z = np.array(list(zip(x_pos, y_pos)))
+    print(x_pos)
+    print(y_pos)
     print(len(z), '\n', z)
     clusters = fclusterdata(z, t=default_img_height, criterion='distance')
 
