@@ -259,6 +259,10 @@ def get_image_sizes_auto(tag_Images, reference_channel, fovs):
     default_img_width = int(tag_Images[0].find('ImageSizeX').text)
     default_img_height = int(tag_Images[0].find('ImageSizeY').text)
 
+    from scipy.cluster.hierarchy import fclusterdata
+    z = np.array(list(zip(x_pos, y_pos)))
+    clusters = fclusterdata(z, t=default_img_height, criterion='distance')
+
     # centering coordinates to 0,0
     leftmost = min(x_pos)
     top = max(y_pos)
@@ -284,10 +288,6 @@ def get_image_sizes_auto(tag_Images, reference_channel, fovs):
             img_pos = [(pos[0] - leftmost, top - pos[1], pos[2]) for pos in img_pos]
             x_pos = [i - leftmost for i in x_pos]
             y_pos = [top - i for i in y_pos]
-
-    from scipy.cluster.hierarchy import fclusterdata
-    z = np.array(list(zip(x_pos, y_pos)))
-    clusters = fclusterdata(z, t=default_img_height, criterion='distance')
 
     c = clusters[0]
     c_ids = []
