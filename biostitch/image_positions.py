@@ -311,6 +311,8 @@ def get_image_sizes_auto(tag_Images, reference_channel, fovs):
 
     ids_in_clusters = [set(c) for c in c_ids]
     y_pos_in_clusters = [sorted(set(c)) for c in c_ypos]
+    print(fovs)
+    print(clusters)
     print(y_pos_in_clusters)
     print(ids_in_clusters)
     y_range = set(y_pos)
