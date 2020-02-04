@@ -112,8 +112,10 @@ def crop_images_scan_auto(images: List[Image], ids: Union[list, DF],
 
     for j, _id in enumerate(ids):
         if _id == 'zeros' and (j == 0 or j == len(ids) - 1):
+            # ignore first and last 0 padding images
             continue
         elif _id == 'zeros':
+            # do not ignore 0 padding images inside the row
             img = np.zeros((y_sizes[j], x_sizes[j]), dtype=dtype)
         else:
             x_shift = default_img_shape[1] - x_sizes[j]
@@ -169,13 +171,13 @@ def stitch_images(images: List[Image], ids: Union[list, DF],
         for row in range(0, nrows):
             f = y_pos_in_big_img[row]  # from
             t = y_pos_in_big_img[row + 1]  # to
-            res[f : t, :] = np.concatenate(crop_images_scan_manual(images, ids.iloc[row, :], x_size.iloc[row, :], y_size.iloc[row, :]), axis=1)
+            res[f:t, :] = np.concatenate(crop_images_scan_manual(images, ids.iloc[row, :], x_size.iloc[row, :], y_size.iloc[row, :]), axis=1)
     return res
 
 
 def stitch_plane(plane_paths: List[str], ids: Union[list, DF], 
-                  x_size: Union[list, DF], y_size: Union[list, DF],
-                  y_pos: Optional[list], do_illum_cor: bool, scan_mode: str) -> Image:
+                 x_size: Union[list, DF], y_size: Union[list, DF],
+                 y_pos: Optional[list], do_illum_cor: bool, scan_mode: str) -> Image:
     """ Do histogram normalization and stitch multiple images into one plane """
     images = read_images(plane_paths, is_dir=False)
     dtype = images[0].dtype.type

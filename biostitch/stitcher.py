@@ -152,10 +152,13 @@ class ImageStitcher:
                 ids, x_size, y_size = estimator.estimate(z_max_img_list)
 
                 if self._scan == 'auto':
-                    for row in range(0, len(y_size)-1):
-                        diff = y_size[row][0] - micro_y_size[row][0]
-                        self._y_pos[row + 1] += diff
-
+                    diffs = []
+                    for row in range(0, len(y_size)):
+                        diffs.append(y_size[row][0] - micro_y_size[row][0])
+                    diffs = list(np.cumsum(diffs))
+                    diffs.insert(0, 0)
+                    for i in range(0, len(self._y_pos)):
+                        self._y_pos[i] += diffs[i]
                 if self._make_preview:
                     self.generate_preview(ids, x_size, y_size, self._y_pos, self._preview_ome_meta, z_max_img_list)
                 del z_max_img_list

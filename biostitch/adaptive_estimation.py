@@ -23,7 +23,7 @@ class AdaptiveShiftEstimation:
         self._ids_in_clusters = []
         self._default_image_shape = (0, 0)
 
-    def estimate(self, images: List[Image]) -> Tuple[Union[DF, DF, DF], Union[list, list, list]]:
+    def estimate(self, images: List[Image]) -> Union[Tuple[DF, DF, DF], Tuple[list, list, list]]:
         self._default_image_shape = images[0].shape
         if self._scan == 'auto':
             ids, x_size, y_size = self.estimate_image_sizes_scan_auto(images)
@@ -32,7 +32,7 @@ class AdaptiveShiftEstimation:
             x_size, y_size = self.estimate_image_sizes_scan_manual(images)
             return self._micro_ids, x_size, y_size
 
-    def estimate_image_sizes_scan_manual(self, images: List[Image]) -> Tuple[list, list]:
+    def estimate_image_sizes_scan_manual(self, images: List[Image]) -> Tuple[DF, DF]:
         x_size = self.find_shift_x_scan_manual(images)
         y_size = self.find_shift_y_scan_manual(images)
         return x_size, y_size
