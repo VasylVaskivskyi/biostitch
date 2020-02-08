@@ -8,6 +8,7 @@ import tifffile as tif
 import cv2 as cv
 from .my_types import Image, DF
 
+
 def alphaNumOrder(string: str) -> str:
     """ Returns all numbers on 5 digits to let sort the string with numeric order.
     Ex: alphaNumOrder("a6b12.125")  ==> "a00006b00012.00125"
@@ -26,12 +27,12 @@ def read_images(path: str, is_dir: bool) -> list:
         file_list.sort(key=alphaNumOrder)
         task = [dask.delayed(tif.imread)(path + fn) for fn in file_list]
         img_list = dask.compute(*task, scheduler='threads')
-        #img_list = list(map(tif.imread, [path + fn for fn in file_list]))
+        # img_list = list(map(tif.imread, [path + fn for fn in file_list]))
     else:
         if isinstance(path, list):
             task = [dask.delayed(tif.imread)(p) for p in path]
             img_list = dask.compute(*task, scheduler='threads')
-            #img_list = list(map(tif.imread, path))
+            # img_list = list(map(tif.imread, path))
         else:
             img_list = tif.imread(path)
 
@@ -44,18 +45,19 @@ def equalize_histogram(img_list: List[Image]) -> list:
     grid_size = [int(round(max((ncols, nrows)) / 20))] * 2
     grid_size = tuple(i if i % 2 != 0 else i + 1 for i in grid_size)
     contrast_limit = 256
+
     def clahe_process(img):
         clahe = cv.createCLAHE(contrast_limit, grid_size)
         return clahe.apply(img)
-        
+
     task = [dask.delayed(clahe_process)(img) for img in img_list]
     img_list = dask.compute(*task, scheduler='processes')
     return img_list
 
 
-def z_project(field: str) -> Image:
+def z_project(path: str) -> Image:
     """ Wrapper function to support multiprocessing """
-    return np.max(np.stack(read_images(field, is_dir=False), axis=0), axis=0)
+    return np.max(np.stack(read_images(path, is_dir=False), axis=0), axis=0)
 
 
 def create_z_projection_for_fov(channel_name: str, path_list: list) -> List[Image]:
@@ -64,13 +66,13 @@ def create_z_projection_for_fov(channel_name: str, path_list: list) -> List[Imag
     task = [dask.delayed(z_project)(field) for field in channel]
     z_max_img_list = dask.compute(*task, scheduler='threads')
 
-    #for field in channel:
+    # for field in channel:
     #   z_max_img_list.append(np.max(np.stack(read_images(field, is_dir=False), axis=0), axis=0))
     return z_max_img_list
 
 
-def stitch_z_projection(channel_name: str, fields_path_list: list, 
-                        ids: Union[list, DF], x_size: Union[list, DF], y_size: Union[list, DF], 
+def stitch_z_projection(channel_name: str, fields_path_list: list,
+                        ids: Union[list, DF], x_size: Union[list, DF], y_size: Union[list, DF],
                         y_pos: Optional[list], do_illum_cor: bool, scan_mode: str) -> List[Image]:
     """ Create max z projection for each field of view """
     z_max_fov_list = create_z_projection_for_fov(channel_name, fields_path_list)
@@ -79,11 +81,11 @@ def stitch_z_projection(channel_name: str, fields_path_list: list,
         z_proj = stitch_images(z_max_fov_list, ids, x_size, y_size, y_pos, scan_mode)
     else:
         z_proj = stitch_images(z_max_fov_list, ids, x_size, y_size, y_pos, scan_mode)
-    
+
     return z_proj
 
 
-def crop_images_scan_manual(images: List[Image], ids: Union[list, DF], 
+def crop_images_scan_manual(images: List[Image], ids: Union[list, DF],
                             x_sizes: Union[list, DF], y_sizes: Union[list, DF]) -> List[Image]:
     """ Read data from dataframe ids, series x_sizes and y_sizes and crop images """
     x_sizes = x_sizes.to_list()
@@ -98,13 +100,13 @@ def crop_images_scan_manual(images: List[Image], ids: Union[list, DF],
         else:
             x_shift = default_img_shape[1] - x_sizes[j]
             y_shift = default_img_shape[0] - y_sizes[j]
-
+            _id = int(_id)
             img = images[_id][y_shift:, x_shift:]
         r_images.append(img)
     return r_images
 
 
-def crop_images_scan_auto(images: List[Image], ids: Union[list, DF], 
+def crop_images_scan_auto(images: List[Image], ids: Union[list, DF],
                           x_sizes: Union[list, DF], y_sizes: Union[list, DF]) -> List[Image]:
     default_img_shape = images[0].shape
     dtype = images[0].dtype.type
@@ -127,7 +129,7 @@ def crop_images_scan_auto(images: List[Image], ids: Union[list, DF],
     return r_images
 
 
-def stitch_images(images: List[Image], ids: Union[list, DF], 
+def stitch_images(images: List[Image], ids: Union[list, DF],
                   x_size: Union[list, DF], y_size: Union[list, DF],
                   y_pos: Optional[list], scan_mode: str) -> List[Image]:
     """ Stitch cropped images by concatenating them horizontally and vertically """
@@ -135,7 +137,7 @@ def stitch_images(images: List[Image], ids: Union[list, DF],
     dtype = images[0].dtype.type
     if scan_mode == 'auto':
         big_img_width = max([sum(row) for row in x_size])
-        big_img_height = max(y_pos) + images[0].shape[0] #sum([row[0] for row in y_size])
+        big_img_height = max(y_pos) + images[0].shape[0]  # sum([row[0] for row in y_size])
         res = np.zeros((big_img_height, big_img_width), dtype=dtype)
         nrows = len(y_size)
 
@@ -145,8 +147,8 @@ def stitch_images(images: List[Image], ids: Union[list, DF],
         left_pad = [row[0] for row in x_size]
         right_pad = [sum(row[:-1]) for row in x_size]
 
-        #y_pos_in_big_img = list(np.cumsum([row[0] for row in y_size]))
-        #y_pos_in_big_img.insert(0, 0)
+        # y_pos_in_big_img = list(np.cumsum([row[0] for row in y_size]))
+        # y_pos_in_big_img.insert(0, 0)
 
         # concatenate and insert image row
         for row in range(0, nrows):
@@ -171,11 +173,12 @@ def stitch_images(images: List[Image], ids: Union[list, DF],
         for row in range(0, nrows):
             f = y_pos_in_big_img[row]  # from
             t = y_pos_in_big_img[row + 1]  # to
-            res[f:t, :] = np.concatenate(crop_images_scan_manual(images, ids.iloc[row, :], x_size.iloc[row, :], y_size.iloc[row, :]), axis=1)
+            res[f:t, :] = np.concatenate(
+                crop_images_scan_manual(images, ids.iloc[row, :], x_size.iloc[row, :], y_size.iloc[row, :]), axis=1)
     return res
 
 
-def stitch_plane(plane_paths: List[str], ids: Union[list, DF], 
+def stitch_plane(plane_paths: List[str], ids: Union[list, DF],
                  x_size: Union[list, DF], y_size: Union[list, DF],
                  y_pos: Optional[list], do_illum_cor: bool, scan_mode: str) -> Image:
     """ Do histogram normalization and stitch multiple images into one plane """

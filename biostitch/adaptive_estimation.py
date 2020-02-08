@@ -30,37 +30,43 @@ class AdaptiveShiftEstimation:
             return ids, x_size, y_size
         elif self._scan == 'manual':
             x_size, y_size = self.estimate_image_sizes_scan_manual(images)
-            return self._micro_ids, x_size, y_size
+            ids = pd.DataFrame(self._micro_ids)
+            for j in ids.columns:
+                for i in ids.index:
+                    try:
+                        val = ids.loc[i, j]
+                        val = int(val)
+                        ids.loc[i, j] = val
+                    except ValueError:
+                        pass
+            return pd.DataFrame(self._micro_ids), pd.DataFrame(x_size), pd.DataFrame(y_size)
 
     def estimate_image_sizes_scan_manual(self, images: List[Image]) -> Tuple[DF, DF]:
         x_size = self.find_shift_x_scan_manual(images)
         y_size = self.find_shift_y_scan_manual(images)
         return x_size, y_size
 
-    def median_error_cor(self, df: DF, axis: int) -> DF:
+    def median_error_cor(self, array: np.array, mode: str) -> np.array:
         """ Replace all values in rows or cols with respective medians"""
-        dataframe = df.copy()
-        if axis == 1:
-            nrows = len(dataframe.index)
-            row_medians = list(dataframe.median(axis=1, skipna=True))
+        arr = array.copy()
+        if mode == 'row':
+            nrows = arr.shape[0]
+            row_medians = list(np.nanmedian(arr, axis=1))
             for i in range(0, nrows):
-                if pd.isna(row_medians[i]):
-                    dataframe.iloc[i, :] = np.nan
-                else:
-                    dataframe.iloc[i, :] = int(round(row_medians[i]))
-        elif axis == 0:
-            ncols = len(dataframe.columns)
-            col_medians = list(dataframe.median(axis=0, skipna=True))
+                arr[i, :] = int(round(row_medians[i]))
+        elif mode == 'col':
+            ncols = arr.shape[1]
+            col_medians = list(np.nanmedian(arr, axis=0))
             for i in range(0, ncols):
-                if pd.isna(col_medians[i]):
-                    dataframe.iloc[:, i] = np.nan
-                else:
-                    dataframe.iloc[:, i] = int(round(col_medians[i]))
+                arr[:, i] = int(round(col_medians[i]))
 
-        return dataframe
+        return arr
 
     def find_pairwise_shift(self, img1: Image, img2: Image, overlap: int, mode: str) -> int:
-        if mode == 'horizontal':
+        """ Finds size of the img2
+
+        """
+        if mode == 'row':
             if overlap >= self._default_image_shape[1]:
                 return 0
 
@@ -70,11 +76,12 @@ class AdaptiveShiftEstimation:
             part2 = cv.normalize(img2[:, :img2_overlap], None, 0, 1, cv.NORM_MINMAX, cv.CV_32F)
             shift, error = cv.phaseCorrelate(part1, part2)
             hor_shift = shift[0]
+
             if hor_shift < 0:
                 pairwise_shift = self._default_image_shape[1] - (overlap + hor_shift)
             else:
                 pairwise_shift = self._default_image_shape[1] - hor_shift
-        elif mode == 'vertical':
+        elif mode == 'col':
             if overlap >= self._default_image_shape[0]:
                 return 0
 
@@ -85,6 +92,7 @@ class AdaptiveShiftEstimation:
 
             shift, error = cv.phaseCorrelate(part1, part2)
             ver_shift = shift[1]
+
             if ver_shift < 0:
                 pairwise_shift = self._default_image_shape[0] - (overlap + ver_shift)
             else:
@@ -92,65 +100,55 @@ class AdaptiveShiftEstimation:
 
         return pairwise_shift
 
-
-    def find_shift_series(self, images: List[Image], id_series: Series, size_series: Series, mode:str) -> Series:
-        ids = id_series.copy()
-        res = id_series.copy()
-        res[:] = np.nan
-        res.iloc[0] = size_series[0]
-        if mode == 'horizontal':
+    def find_shift_row_col(self, images: List[Image], id_list: list, size_list: list, mode: str) -> list:
+        if mode == 'row':
             axis = 1
-        elif mode == 'vertical':
+        elif mode == 'col':
             axis = 0
-        add_prcnt = int(round(self._default_image_shape[axis] * 0.01))
+
+        ids = id_list
+        res = [np.nan] * len(ids)
+        res[0] = self._default_image_shape[axis]
+
+        additional_space = int(round(self._default_image_shape[axis] * 0.01))
 
         for i in range(1, len(ids)):
-            if ids.iloc[i] == 'zeros':
-                res.iloc[i] = np.nan
-            elif ids.iloc[i - 1] == 'zeros':
-                res.iloc[i - 1] = np.nan
+            if ids[i] == 'zeros':
+                res[i] = np.nan
+            elif ids[i - 1] == 'zeros':
+                res[i - 1] = np.nan
             else:
-                img1 = ids.iloc[i - 1]
-                img2 = ids.iloc[i]
+                img1 = int(ids[i - 1])
+                img2 = int(ids[i])
 
-                overlap = int(round((self._default_image_shape[axis] - size_series.iloc[i]) + add_prcnt))
-                res.iloc[i] = self.find_pairwise_shift(images[img1], images[img2], overlap, mode)
+                overlap = int(round((self._default_image_shape[axis] - size_list[i]) + additional_space))
+                res[i] = self.find_pairwise_shift(images[img1], images[img2], overlap, mode)
 
         return res
 
     def find_shift_x_scan_manual(self, images: List[Image]) -> DF:
         ids = self._micro_ids
         x_size = ids.copy()
-        x_size.loc[:, :] = 0.0
+        x_size[:, :] = 0.0
+        x_size = x_size.astype(np.float32)
+
         nrows, ncols = x_size.shape
-
         for i in range(0, nrows):
-            x_size.iloc[i, :] = self.find_shift_series(images, ids.iloc[i, :], self._micro_x_size.iloc[i, :], 'horizontal')
-        x_size = self.median_error_cor(x_size, axis=0)
-        x_size.iloc[:, 0] = self._default_image_shape[1]
-
-        col_means = list(x_size.mean(axis=0))
-        for i in range(0, ncols):
-            x_size.iloc[:, i] = int(round(col_means[i]))
-            
+            x_size[i, :] = self.find_shift_row_col(images, ids[i, :].tolist(), self._micro_x_size[i, :].tolist(), 'row')
+        x_size = self.median_error_cor(x_size, 'col')
         x_size = x_size.astype(np.int32)
         return x_size
 
     def find_shift_y_scan_manual(self, images: List[Image]) -> DF:
         ids = self._micro_ids
         y_size = ids.copy()
-        y_size.loc[:, :] = 0.0
+        y_size[:, :] = 0.0
+        y_size = y_size.astype(np.float32)
+
         nrows, ncols = y_size.shape
-
         for i in range(0, ncols):
-            y_size.iloc[:, i] = self.find_shift_series(images, ids.iloc[:, i], self._micro_y_size.iloc[:, i], 'vertical')
-        y_size = self.median_error_cor(y_size, axis=1)
-        y_size.iloc[0, :] = self._default_image_shape[0]
-        
-        row_means = list(y_size.mean(axis=1))
-        for i in range(0, nrows):
-            y_size.iloc[i, :] = int(round(row_means[i]))
-
+            y_size[:, i] = self.find_shift_row_col(images, ids[:, i].tolist(), self._micro_y_size[:, i].tolist(), 'col')
+        y_size = self.median_error_cor(y_size, 'row')
         y_size = y_size.astype(np.int32)
         return y_size
 
@@ -163,7 +161,6 @@ class AdaptiveShiftEstimation:
         micro_x_sizes = self._micro_x_size
         micro_y_sizes = self._micro_y_size
 
-
         rows_in_clusters = []
         for c in range(0, len(ids_in_clusters)):
             this_cluster_rows = []
@@ -171,7 +168,7 @@ class AdaptiveShiftEstimation:
                 if row[1] in ids_in_clusters[c] and row[1] != 'zeros':
                     this_cluster_rows.append(row)
             rows_in_clusters.append(this_cluster_rows)
-        print(rows_in_clusters)
+
         ids = []
         x_sizes = []
         y_sizes = []
@@ -185,9 +182,7 @@ class AdaptiveShiftEstimation:
                     micro_ids_sub.append(micro_ids[row])
                     micro_x_sizes_sub.append(micro_x_sizes[row])
                     micro_y_sizes_sub.append(micro_y_sizes[row])
-            print('\n', micro_ids_sub)
-            print('\n', micro_x_sizes_sub)
-            print('\n', micro_y_sizes_sub)
+
             this_cluster_x_sizes, this_cluster_y_sizes = self.calculate_image_sizes_scan_auto(images, micro_ids_sub, micro_x_sizes_sub, micro_y_sizes_sub)
             ids.extend(micro_ids_sub)
             x_sizes.extend(this_cluster_x_sizes)
@@ -202,8 +197,8 @@ class AdaptiveShiftEstimation:
         # for each row of images find horizontal shift between images
         nrows = len(micro_ids)
         for row in range(0, nrows):
-            this_row_ids = micro_ids[row] # image ids in the list
-            this_row_x_sizes_from_micro = micro_x_sizes[row] # image size from microscope meta to calculate overlap
+            this_row_ids = micro_ids[row]  # image ids in the list
+            this_row_x_sizes_from_micro = micro_x_sizes[row]  # image size from microscope meta to calculate overlap
             this_row_x_sizes = self.find_shift_x_scan_auto(images, this_row_ids, this_row_x_sizes_from_micro)
             est_x_sizes.append(this_row_x_sizes)
 
@@ -216,6 +211,34 @@ class AdaptiveShiftEstimation:
         x_sizes = self.remapping_micro_param(micro_ids, micro_x_sizes, est_x_sizes, mode='x')
         #x_sizes = est_x_sizes
 
+        est_y_sizes.append(self._default_image_shape[0])
+        x_pos = [np.cumsum(np.insert(x, 0, 0)[:-1]) for x in x_sizes]
+        for row in range(1, nrows):
+            prev_row_ids = micro_ids[row - 1]
+            this_row_ids = micro_ids[row]
+            prev_row_x_pos = x_pos[row - 1]
+            this_row_x_pos = x_pos[row]
+
+            valid_combinations = []
+            for i, x in enumerate(this_row_x_pos):
+                if this_row_ids[i] == 'zeros':
+                    continue
+                distance = (x - prev_row_x_pos) ** 2
+                min_dist = np.min(distance)
+                min_arg = np.argmin(distance)
+                if not min_dist > self._default_image_shape[1] and not prev_row_ids[min_arg] == 'zeros':
+                    valid_combinations.append((prev_row_ids[min_arg], this_row_ids[i]))
+                else:
+                    continue
+            this_row_y_size = []
+            for comb in valid_combinations:
+                prev_row_img_id = comb[0]
+                this_row_img_id = comb[1]
+                this_row_y_size.append(
+                    self.find_shift_y_scan_auto(images[prev_row_img_id], images[this_row_img_id], micro_y_sizes[row]))
+            est_y_sizes.append(int(round(np.median(this_row_y_size))))
+
+        """
         # iteratively compare images from two rows
         # use only combinations without zero padding or gap images
         for row in range(1, nrows):
@@ -231,6 +254,7 @@ class AdaptiveShiftEstimation:
                 this_row_y_size.append(self.find_shift_y_scan_auto(images[prev_row_img_id], images[this_row_img_id], micro_y_sizes[row]))
             est_y_sizes.append(int(round(np.median(this_row_y_size))))
         est_y_sizes.append(self._default_image_shape[0])
+        """
         y_sizes_arr = []
         for row in range(0, len(est_y_sizes)):
             y_sizes_arr.append( [est_y_sizes[row]] * len(est_x_sizes[row]) )
@@ -253,7 +277,7 @@ class AdaptiveShiftEstimation:
                 img1 = ids[i - 1]
                 img2 = ids[i]
                 overlap = int(round((self._default_image_shape[1] - x_sizes[i]) + add_prcnt))
-                res[i] = int(round(self.find_pairwise_shift(images[img1], images[img2], overlap, 'horizontal')))
+                res[i] = int(round(self.find_pairwise_shift(images[img1], images[img2], overlap, 'row')))
 
         return res
 
@@ -261,7 +285,7 @@ class AdaptiveShiftEstimation:
         # overlap is the same across the row, so we take only first element of the row
         add_prcnt = int(round(self._default_image_shape[1] * 0.01))
         overlap = int(round(self._default_image_shape[0] - y_sizes[0] + add_prcnt))
-        y_size = self.find_pairwise_shift(img1, img2, overlap, 'vertical')
+        y_size = self.find_pairwise_shift(img1, img2, overlap, 'col')
         return y_size
 
     def remapping_micro_param(self, ids: list, micro_arr: list, est_arr: list, mode: str) -> list:
@@ -307,10 +331,10 @@ class AdaptiveShiftEstimation:
         # replace values in the list of microscopy sizes with medians of estimated sizes
         if mode == 'y':
             for row in range(0, len(result_arr)):
-                for x in range(0, len(result_arr[row])):
-                    this_size = result_arr[row][x]
+                for y in range(0, len(result_arr[row])):
+                    this_size = result_arr[row][y]
                     if this_size in corr_dict:
-                        result_arr[row][x] = corr_dict[this_size]
+                        result_arr[row][y] = corr_dict[this_size]
 
         elif mode == 'x':
             for row in range(0, len(result_arr)):
@@ -329,6 +353,7 @@ class AdaptiveShiftEstimation:
     @property
     def scan(self):
         return self._scan
+
     @scan.setter
     def scan(self, value: str):
         self._scan = value
@@ -336,6 +361,7 @@ class AdaptiveShiftEstimation:
     @property
     def micro_ids(self):
         return self._micro_ids
+
     @micro_ids.setter
     def micro_ids(self, value: Union[list, DF]):
         self._micro_ids = value
@@ -343,6 +369,7 @@ class AdaptiveShiftEstimation:
     @property
     def micro_x_size(self):
         return self._micro_x_size
+
     @micro_x_size.setter
     def micro_x_size(self, value: Union[list, DF]):
         self._micro_x_size = value
@@ -350,6 +377,7 @@ class AdaptiveShiftEstimation:
     @property
     def micro_y_size(self):
         return self._micro_y_size
+
     @micro_y_size.setter
     def micro_y_size(self, value: Union[list, DF]):
         self._micro_y_size = value
@@ -357,6 +385,7 @@ class AdaptiveShiftEstimation:
     @property
     def ids_in_clusters(self):
         return self._ids_in_clusters
+
     @ids_in_clusters.setter
     def ids_in_clusters(self, value: list):
         self._ids_in_clusters = value

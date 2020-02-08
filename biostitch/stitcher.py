@@ -7,7 +7,7 @@ from datetime import datetime
 
 from .ome_tags import create_ome_metadata, get_channel_metadata
 from .adaptive_estimation import AdaptiveShiftEstimation
-from .image_positions import load_necessary_xml_tags, get_image_sizes_auto, get_image_sizes_manual, get_image_paths_for_fields_per_channel, get_image_paths_for_planes_per_channel
+from .image_positions import load_necessary_xml_tags, get_image_sizes_scan_auto, get_image_sizes_scan_manual, get_image_paths_for_fields_per_channel, get_image_paths_for_planes_per_channel
 from .image_processing import stitch_z_projection, create_z_projection_for_fov, stitch_plane, stitch_images
 from .saving_loading import load_parameters, save_parameters
 
@@ -134,10 +134,10 @@ class ImageStitcher:
         if self._load_param_path == 'none':
 
             if self._scan == 'auto':
-                ids, x_size, y_size, ids_in_clusters, self._y_pos = get_image_sizes_auto(tag_Images, self._reference_channel, self._fovs)
+                ids, x_size, y_size, ids_in_clusters, self._y_pos = get_image_sizes_scan_auto(tag_Images, self._reference_channel, self._fovs)
                 micro_y_size = y_size.copy()
             elif self._scan == 'manual':
-                ids, x_size, y_size = get_image_sizes_manual(tag_Images, self._reference_channel, self._fovs)
+                ids, x_size, y_size = get_image_sizes_scan_manual(tag_Images, self._reference_channel, self._fovs)
 
             if self._is_adaptive:
                 print('estimating image shifts')
@@ -154,11 +154,12 @@ class ImageStitcher:
                 if self._scan == 'auto':
                     diffs = []
                     for row in range(0, len(y_size)):
-                        diffs.append(y_size[row][0] - micro_y_size[row][0])
+                        diffs.append(y_size[row][0] - micro_y_size[row][0])  # estimated - initial
                     diffs = list(np.cumsum(diffs))
                     diffs.insert(0, 0)
                     for i in range(0, len(self._y_pos)):
                         self._y_pos[i] += diffs[i]
+
                 if self._make_preview:
                     self.generate_preview(ids, x_size, y_size, self._y_pos, self._preview_ome_meta, z_max_img_list)
                 del z_max_img_list
