@@ -230,13 +230,13 @@ class AdaptiveShiftEstimation:
                     valid_combinations.append((prev_row_ids[min_arg], this_row_ids[i]))
                 else:
                     continue
+            print(valid_combinations)
             this_row_y_size = []
             for comb in valid_combinations:
                 prev_row_img_id = comb[0]
                 this_row_img_id = comb[1]
                 this_row_y_size.append(
                     self.find_shift_y_scan_auto(images[prev_row_img_id], images[this_row_img_id], micro_y_sizes[row]))
-            print(np.median(this_row_y_size), this_row_y_size)
             est_y_sizes.append(int(round(np.median(this_row_y_size))))
 
         """
