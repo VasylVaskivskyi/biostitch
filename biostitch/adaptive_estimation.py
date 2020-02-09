@@ -259,8 +259,8 @@ class AdaptiveShiftEstimation:
         for row in range(0, len(est_y_sizes)):
             y_sizes_arr.append( [est_y_sizes[row]] * len(est_x_sizes[row]) )
 
-        y_sizes = self.remapping_micro_param(micro_ids, micro_y_sizes, y_sizes_arr, mode='y')
-        #y_sizes = y_sizes_arr
+        #y_sizes = self.remapping_micro_param(micro_ids, micro_y_sizes, y_sizes_arr, mode='y')
+        y_sizes = y_sizes_arr
         return x_sizes, y_sizes
 
     def find_shift_x_scan_auto(self, images: List[Image], ids: list, x_sizes: list) -> list:

@@ -214,12 +214,12 @@ def get_image_sizes_scan_auto(tag_Images, reference_channel, fovs):
         y_sizes.extend(list(np.diff(cluster)))
 
     for i in range(0, len(y_pos_in_clusters)):
-        diff = y_pos_in_clusters[i][1] - default_img_height
-        y_pos_in_clusters[i][1] = default_img_height
-        for j in range(2, len(y_pos_in_clusters[i])):
+        first_img_size = y_pos_in_clusters[i][1] - y_pos_in_clusters[i][0]
+        diff = default_img_height - first_img_size
+        for j in range(1, len(y_pos_in_clusters[i])):
             y_pos_in_clusters[i][j] += diff
 
-    y_pos_in_clusters = list(*chain(y_pos_in_clusters))
+    y_pos_in_clusters = list(chain.from_iterable(y_pos_in_clusters))
 
     # image coordinates arranged in rows by same y-coordinate
     row_list = []
@@ -236,7 +236,7 @@ def get_image_sizes_scan_auto(tag_Images, reference_channel, fovs):
         img_ids = [i[2] for i in row]
 
         # start each row with zero padding and full width image
-        img_size = [(img_coords[0], 'zeros'), (default_img_width, img_ids[0])]
+        img_size = [(img_coords[0], 'zeros'), (img_coords[1] - img_coords[0], img_ids[0])]
         # detect gaps between images
         for i in range(1, len(img_coords)):
             size = img_coords[i] - img_coords[i - 1]

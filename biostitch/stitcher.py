@@ -157,9 +157,13 @@ class ImageStitcher:
                         diffs.append(y_size[row][0] - micro_y_size[row][0])  # estimated - initial
                     diffs = list(np.cumsum(diffs))
                     diffs.insert(0, 0)
+                    print(y_size)
+                    print(micro_y_size)
+                    print(diffs)
+                    print('before', self._y_pos)
                     for i in range(0, len(self._y_pos)):
                         self._y_pos[i] += diffs[i]
-
+                    print('after', self._y_pos)
                 if self._make_preview:
                     self.generate_preview(ids, x_size, y_size, self._y_pos, self._preview_ome_meta, z_max_img_list)
                 del z_max_img_list
