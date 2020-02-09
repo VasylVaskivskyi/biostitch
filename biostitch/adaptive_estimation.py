@@ -208,11 +208,17 @@ class AdaptiveShiftEstimation:
             est_x_sizes[row][-1] += (max_row_width - sum(est_x_sizes[row]))
 
         # error correction using sizes from microscopy metadata
-        x_sizes = self.remapping_micro_param(micro_ids, micro_x_sizes, est_x_sizes, mode='x')
-        #x_sizes = est_x_sizes
+        #x_sizes = self.remapping_micro_param(micro_ids, micro_x_sizes, est_x_sizes, mode='x')
+        x_sizes = est_x_sizes
 
         est_y_sizes.append(self._default_image_shape[0])
-        x_pos = [np.cumsum(np.insert(x, 0, 0)[:-1]) for x in x_sizes]
+        x_pos = []
+        for x in x_sizes:
+            this_row = x.copy()
+            this_row.insert(0, 0)
+            x_pos.append(np.cumsum(this_row[:-1]))
+        for r in x_pos:
+            print(r)
         for row in range(1, nrows):
             prev_row_ids = micro_ids[row - 1]
             this_row_ids = micro_ids[row]
