@@ -226,6 +226,7 @@ class AdaptiveShiftEstimation:
                 distance = (x - prev_row_x_pos) ** 2
                 min_dist = np.min(distance)
                 min_arg = np.argmin(distance)
+                print(distance, min_dist, min_arg)
                 if not min_dist > self._default_image_shape[1] and not prev_row_ids[min_arg] == 'zeros':
                     valid_combinations.append((prev_row_ids[min_arg], this_row_ids[i]))
                 else:
