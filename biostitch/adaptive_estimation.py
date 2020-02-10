@@ -108,22 +108,22 @@ class AdaptiveShiftEstimation:
 
         ids = id_list
         res = [np.nan] * len(ids)
-        res[0] = self._default_image_shape[axis]
+
 
         additional_space = int(round(self._default_image_shape[axis] * 0.01))
 
-        for i in range(1, len(ids)):
+        for i in range(0, len(ids)-1):
             if ids[i] == 'zeros':
                 res[i] = np.nan
-            elif ids[i - 1] == 'zeros':
-                res[i - 1] = np.nan
+            elif ids[i + 1] == 'zeros':
+                res[i + 1] = np.nan
             else:
-                img1 = int(ids[i - 1])
-                img2 = int(ids[i])
+                img1 = int(ids[i])
+                img2 = int(ids[i+1])
 
                 overlap = int(round((self._default_image_shape[axis] - size_list[i]) + additional_space))
                 res[i] = self.find_pairwise_shift(images[img1], images[img2], overlap, mode)
-
+        res[-1] = self._default_image_shape[axis]
         return res
 
     def find_shift_x_scan_manual(self, images: List[Image]) -> DF:
@@ -208,21 +208,21 @@ class AdaptiveShiftEstimation:
             est_x_sizes[row][-1] += (max_row_width - sum(est_x_sizes[row]))
 
         # error correction using sizes from microscopy metadata
-        #x_sizes = self.remapping_micro_param(micro_ids, micro_x_sizes, est_x_sizes, mode='x')
-        x_sizes = est_x_sizes
+        x_sizes = self.remapping_micro_param(micro_ids, micro_x_sizes, est_x_sizes, mode='x')
+        #x_sizes = est_x_sizes
 
-        est_y_sizes.append(self._default_image_shape[0])
+
         x_pos = []
         for x in x_sizes:
             this_row = x.copy()
             this_row.insert(0, 0)
             x_pos.append(np.cumsum(this_row[:-1]))
 
-        for row in range(1, nrows):
-            prev_row_ids = micro_ids[row - 1]
-            this_row_ids = micro_ids[row]
-            prev_row_x_pos = x_pos[row - 1]
-            this_row_x_pos = x_pos[row]
+        for row in range(0, nrows-1):
+            prev_row_ids = micro_ids[row]
+            this_row_ids = micro_ids[row+1]
+            prev_row_x_pos = x_pos[row]
+            this_row_x_pos = x_pos[row+1]
 
             valid_combinations = []
             for i, x in enumerate(this_row_x_pos):
@@ -243,24 +243,8 @@ class AdaptiveShiftEstimation:
                 this_row_y_size.append(
                     self.find_shift_y_scan_auto(images[prev_row_img_id], images[this_row_img_id], micro_y_sizes[row]))
             est_y_sizes.append(int(round(np.median(this_row_y_size))))
-
-        """
-        # iteratively compare images from two rows
-        # use only combinations without zero padding or gap images
-        for row in range(1, nrows):
-            prev_row_ids = micro_ids[row - 1]
-            this_row_ids = micro_ids[row]
-            combinations = zip(prev_row_ids, this_row_ids)
-            valid_combinations = [comb for comb in combinations if 'zeros' not in comb]
-
-            this_row_y_size = []
-            for comb in valid_combinations:
-                prev_row_img_id = comb[0]
-                this_row_img_id = comb[1]
-                this_row_y_size.append(self.find_shift_y_scan_auto(images[prev_row_img_id], images[this_row_img_id], micro_y_sizes[row]))
-            est_y_sizes.append(int(round(np.median(this_row_y_size))))
         est_y_sizes.append(self._default_image_shape[0])
-        """
+
         y_sizes_arr = []
         for row in range(0, len(est_y_sizes)):
             y_sizes_arr.append( [est_y_sizes[row]] * len(est_x_sizes[row]) )
@@ -271,20 +255,20 @@ class AdaptiveShiftEstimation:
 
     def find_shift_x_scan_auto(self, images: List[Image], ids: list, x_sizes: list) -> list:
         res = [0] * len(ids)
-        res[0] = x_sizes[0]
+
         add_prcnt = int(round(self._default_image_shape[1] * 0.01))
         # in each row first picture is zero padding
-        for i in range(1, len(ids)):
+        for i in range(0, len(ids)-1):
             if ids[i] == 'zeros':
                 res[i] = x_sizes[i]
-            elif ids[i - 1] == 'zeros':
+            elif ids[i+1] == 'zeros':
                 res[i] = self._default_image_shape[1]
             else:
-                img1 = ids[i - 1]
-                img2 = ids[i]
+                img1 = ids[i]
+                img2 = ids[i+1]
                 overlap = int(round((self._default_image_shape[1] - x_sizes[i]) + add_prcnt))
                 res[i] = int(round(self.find_pairwise_shift(images[img1], images[img2], overlap, 'row')))
-
+        res[-1] = self._default_image_shape[1]
         return res
 
     def find_shift_y_scan_auto(self, img1: Image, img2: Image, y_sizes: list) -> int:

@@ -1,9 +1,11 @@
+import os
+import copy
+import gc
+import numpy as np
+import pandas as pd
+from datetime import datetime
 import tifffile as tif
 from tifffile import TiffWriter
-import gc
-import os
-import numpy as np
-from datetime import datetime
 
 from .ome_tags import create_ome_metadata, get_channel_metadata
 from .adaptive_estimation import AdaptiveShiftEstimation
@@ -135,7 +137,8 @@ class ImageStitcher:
 
             if self._scan == 'auto':
                 ids, x_size, y_size, ids_in_clusters, self._y_pos = get_image_sizes_scan_auto(tag_Images, self._reference_channel, self._fovs)
-                micro_y_size = y_size.copy()
+                micro_y_size = copy.deepcopy(y_size)
+
             elif self._scan == 'manual':
                 ids, x_size, y_size = get_image_sizes_scan_manual(tag_Images, self._reference_channel, self._fovs)
 
@@ -150,7 +153,7 @@ class ImageStitcher:
                 if self._scan == 'auto':
                     estimator.ids_in_clusters = ids_in_clusters
                 ids, x_size, y_size = estimator.estimate(z_max_img_list)
-
+                print('x_size', x_size)
                 if self._scan == 'auto':
                     diffs = []
                     for row in range(0, len(y_size)):
@@ -168,6 +171,10 @@ class ImageStitcher:
                     self.generate_preview(ids, x_size, y_size, self._y_pos, self._preview_ome_meta, z_max_img_list)
                 del z_max_img_list
                 gc.collect()
+            else:
+                ids = pd.DataFrame(ids)
+                x_size = pd.DataFrame(x_size)
+                y_size = pd.DataFrame(y_size)
         else:
             # loading previously estimated stitching parameters from files
             print('using parameters from loaded files')

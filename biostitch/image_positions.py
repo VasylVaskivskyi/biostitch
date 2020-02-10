@@ -133,10 +133,10 @@ def get_image_sizes_scan_manual(tag_Images, reference_channel, fovs):
     x_size = np.diff(x_pos, axis=1)
     y_size = np.diff(y_pos, axis=0)
 
-    first_x_col = np.array([[default_img_width]] * ids.shape[0])
-    first_y_row = np.array([[default_img_height] * ids.shape[1]])
-    x_size = np.concatenate((first_x_col, x_size), axis=1)
-    y_size = np.concatenate((first_y_row, y_size), axis=0)
+    last_x_col = np.array([[default_img_width]] * ids.shape[0])
+    last_y_row = np.array([[default_img_height] * ids.shape[1]])
+    x_size = np.concatenate((x_size, last_x_col), axis=1)
+    y_size = np.concatenate((y_size, last_y_row), axis=0)
 
     return ids, x_size, y_size
 
@@ -207,18 +207,20 @@ def get_image_sizes_scan_auto(tag_Images, reference_channel, fovs):
 
     y_range = sorted(set(y_pos))  # because set is unordered
     x_range = sorted(set(x_pos))
-    y_sizes = []
 
-    for cluster in y_pos_in_clusters:
-        y_sizes.append(default_img_height)
-        y_sizes.extend(list(np.diff(cluster)))
-
+    """
     for i in range(0, len(y_pos_in_clusters)):
         first_img_size = y_pos_in_clusters[i][1] - y_pos_in_clusters[i][0]
         diff = default_img_height - first_img_size
         for j in range(1, len(y_pos_in_clusters[i])):
             y_pos_in_clusters[i][j] += diff
+    """
 
+
+    y_sizes = []
+    for cluster in y_pos_in_clusters:
+        y_sizes.extend(list(np.diff(cluster)))
+        y_sizes.append(default_img_height)
     y_pos_in_clusters = list(chain.from_iterable(y_pos_in_clusters))
 
     # image coordinates arranged in rows by same y-coordinate

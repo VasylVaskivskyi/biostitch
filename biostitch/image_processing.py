@@ -101,7 +101,7 @@ def crop_images_scan_manual(images: List[Image], ids: Union[list, DF],
             x_shift = default_img_shape[1] - x_sizes[j]
             y_shift = default_img_shape[0] - y_sizes[j]
             _id = int(_id)
-            img = images[_id][y_shift:, x_shift:]
+            img = images[_id][:y_sizes[j], :x_sizes[j]]
         r_images.append(img)
     return r_images
 
@@ -122,7 +122,7 @@ def crop_images_scan_auto(images: List[Image], ids: Union[list, DF],
         else:
             x_shift = default_img_shape[1] - x_sizes[j]
             y_shift = default_img_shape[0] - y_sizes[j]
-            img = images[_id][y_shift:, x_shift:]
+            img = images[_id][:y_sizes[j], :x_sizes[j]]
 
         r_images.append(img)
 
@@ -136,6 +136,7 @@ def stitch_images(images: List[Image], ids: Union[list, DF],
 
     dtype = images[0].dtype.type
     if scan_mode == 'auto':
+        print('stitching\n', x_size)
         big_img_width = max([sum(row) for row in x_size])
         big_img_height = max(y_pos) + images[0].shape[0]  # sum([row[0] for row in y_size])
         res = np.zeros((big_img_height, big_img_width), dtype=dtype)
@@ -153,7 +154,6 @@ def stitch_images(images: List[Image], ids: Union[list, DF],
         # concatenate and insert image row
         for row in range(0, nrows):
             f = y_pos[row]  # from
-
             img_row = np.concatenate(crop_images_scan_auto(images, ids[row], x_size[row], y_size[row]), axis=1)
             t = f + img_row.shape[0]  # to
             res[f:t, left_pad[row]:right_pad[row]] = img_row
