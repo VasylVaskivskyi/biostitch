@@ -136,7 +136,6 @@ def stitch_images(images: List[Image], ids: Union[list, DF],
 
     dtype = images[0].dtype.type
     if scan_mode == 'auto':
-        print('stitching\n', x_size)
         big_img_width = max([sum(row) for row in x_size])
         big_img_height = max(y_pos) + images[0].shape[0]  # sum([row[0] for row in y_size])
         res = np.zeros((big_img_height, big_img_width), dtype=dtype)

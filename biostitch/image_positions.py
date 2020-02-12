@@ -94,6 +94,7 @@ def get_image_positions_scan_manual(tag_Images, reference_channel, fovs):
 
     y_range = sorted(set(y_pos))  # because set is unordered
     x_range = sorted(set(x_pos))
+    # sort image coordinates int rows 
     row_list = []
     for y in y_range:
         row = [i for i in img_pos if i[1] == y]

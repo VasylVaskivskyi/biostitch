@@ -160,19 +160,15 @@ class AdaptiveShiftEstimation:
         micro_ids = self._micro_ids
         micro_x_sizes = self._micro_x_size
         micro_y_sizes = self._micro_y_size
-        print('ids_in_clusters\n',self._ids_in_clusters)
         rows_in_clusters = []
         for cluster in ids_in_clusters:
-            print('cluster', cluster)
             this_cluster_rows = []
             for row in micro_ids:
-                print('row',row)
                 first_non_zero = [i for i in row if i != 'zeros'][0]
                 if first_non_zero in cluster:
-                    print('in cluster', row)
                     this_cluster_rows.append(row)
             rows_in_clusters.append(this_cluster_rows)
-        print('rows_in_clusters\n',rows_in_clusters)
+
         ids = []
         x_sizes = []
         y_sizes = []
