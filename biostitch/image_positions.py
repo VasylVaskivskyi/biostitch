@@ -14,7 +14,6 @@ def load_necessary_xml_tags(xml_path):
         xml_file = f.read()
         f.close()
     # remove this tag to avoid dealing with formatting like this {http://www.perkinelmer.com/PEHH/HarmonyV5}Image
-    # xml_file = xml_file.replace('xmlns="http://www.perkinelmer.com/PEHH/HarmonyV5"', '')
     xml_file = re.sub(r'xmlns="http://www.perkinelmer.com/PEHH/HarmonyV\d"', '',xml_file)
     xml = ET.fromstring(xml_file)
     tag_Images = xml.find('Images')
@@ -221,6 +220,7 @@ def get_image_sizes_scan_auto(tag_Images, reference_channel, fovs):
     for cluster in y_pos_in_clusters:
         y_sizes.extend(list(np.diff(cluster)))
         y_sizes.append(default_img_height)
+        
     y_pos_in_clusters = list(chain.from_iterable(y_pos_in_clusters))
 
     # image coordinates arranged in rows by same y-coordinate

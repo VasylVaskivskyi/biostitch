@@ -153,7 +153,9 @@ class ImageStitcher:
                 if self._scan == 'auto':
                     estimator.ids_in_clusters = ids_in_clusters
                 ids, x_size, y_size = estimator.estimate(z_max_img_list)
-                print('x_size', x_size)
+                print('y_pos\n',self._y_pos)
+                print('y_size\n',y_size)
+                print('micro_y_size\n',micro_y_size)
                 if self._scan == 'auto':
                     diffs = []
                     for row in range(0, len(y_size)):
