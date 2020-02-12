@@ -189,7 +189,7 @@ def get_image_sizes_scan_auto(tag_Images, reference_channel, fovs):
     for i in range(0, len(clusters)):
         this_val = clusters[i]
         if this_val == c:
-            this_cluster_ids.append(fovs[ii])
+            this_cluster_ids.append(fovs[i])
             this_cluster_ypos.append(y_pos[i])
         else:
             c = this_val
