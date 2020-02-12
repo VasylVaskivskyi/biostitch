@@ -169,7 +169,7 @@ class AdaptiveShiftEstimation:
                 if first_non_zero in cluster:
                     this_cluster_rows.append(row)
             rows_in_clusters.append(this_cluster_rows)
-
+        print(rows_in_clusters)
         ids = []
         x_sizes = []
         y_sizes = []
