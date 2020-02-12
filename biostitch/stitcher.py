@@ -138,7 +138,7 @@ class ImageStitcher:
             if self._scan == 'auto':
                 ids, x_size, y_size, ids_in_clusters, self._y_pos = get_image_sizes_scan_auto(tag_Images, self._reference_channel, self._fovs)
                 micro_y_size = copy.deepcopy(y_size)
-
+                
             elif self._scan == 'manual':
                 ids, x_size, y_size = get_image_sizes_scan_manual(tag_Images, self._reference_channel, self._fovs)
 

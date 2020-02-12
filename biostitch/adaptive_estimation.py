@@ -160,18 +160,20 @@ class AdaptiveShiftEstimation:
         micro_ids = self._micro_ids
         micro_x_sizes = self._micro_x_size
         micro_y_sizes = self._micro_y_size
-
+        
         rows_in_clusters = []
-        for c in range(0, len(ids_in_clusters)):
+        for cluster in ids_in_clusters:
             this_cluster_rows = []
             for row in micro_ids:
-                if row[1] in ids_in_clusters[c] and row[1] != 'zeros':
+                first_non_zero = [i for i in row if i != 'zeros'][0]
+                if first_non_zero in cluster:
                     this_cluster_rows.append(row)
             rows_in_clusters.append(this_cluster_rows)
 
         ids = []
         x_sizes = []
         y_sizes = []
+    
         for cls in rows_in_clusters:
             cluster = list(chain(*cls))
             micro_ids_sub = []
@@ -201,7 +203,7 @@ class AdaptiveShiftEstimation:
             this_row_x_sizes_from_micro = micro_x_sizes[row]  # image size from microscope meta to calculate overlap
             this_row_x_sizes = self.find_shift_x_scan_auto(images, this_row_ids, this_row_x_sizes_from_micro)
             est_x_sizes.append(this_row_x_sizes)
-
+        
         # calculating zero padding for image rows
         max_row_width = max([sum(row) for row in est_x_sizes])
         for row in range(0, len(est_x_sizes)):
@@ -235,7 +237,6 @@ class AdaptiveShiftEstimation:
                     valid_combinations.append((prev_row_ids[min_arg], this_row_ids[i]))
                 else:
                     continue
-            print(valid_combinations)
             this_row_y_size = []
             for comb in valid_combinations:
                 prev_row_img_id = comb[0]

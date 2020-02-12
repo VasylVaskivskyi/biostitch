@@ -1,3 +1,4 @@
+import re
 from itertools import chain
 import xml.etree.ElementTree as ET
 import numpy as np
@@ -13,8 +14,8 @@ def load_necessary_xml_tags(xml_path):
         xml_file = f.read()
         f.close()
     # remove this tag to avoid dealing with formatting like this {http://www.perkinelmer.com/PEHH/HarmonyV5}Image
-    xml_file = xml_file.replace('xmlns="http://www.perkinelmer.com/PEHH/HarmonyV5"', '')
-
+    # xml_file = xml_file.replace('xmlns="http://www.perkinelmer.com/PEHH/HarmonyV5"', '')
+    xml_file = re.sub(r'xmlns="http://www.perkinelmer.com/PEHH/HarmonyV\d"', '',xml_file)
     xml = ET.fromstring(xml_file)
     tag_Images = xml.find('Images')
     tag_Name = xml.find('Plates').find('Plate').find('Name').text.replace(' ', '_')
@@ -33,16 +34,16 @@ def get_positions_from_xml(tag_Images, reference_channel, fovs):
     img_pos = []
     if fovs is not None:
         for img in tag_Images:
-            if img.find('ChannelName').text == reference_channel and img.find('PlaneID').text == '1' and int(
-                    img.find('FieldID').text) in fovs:
+            if img.find('ChannelName').text == reference_channel and img.find('PlaneID').text == '1' and int(img.find('FieldID').text) in fovs:
                 x_coord = '{:.9f}'.format(float(img.find('PositionX').text))  # limit precision to nm
                 y_coord = '{:.9f}'.format(float(img.find('PositionY').text))
 
                 # convert position to pixels by dividing on resolution in nm
                 x_pos.append(round(float(x_coord) / float(x_resol)))  # x_resol[:cut_resol_x]
                 y_pos.append(round(float(y_coord) / float(y_resol)))
-                img_pos.append((round(float(x_coord) / float(x_resol)), round(float(y_coord) / float(y_resol)),
-                                img.find('FieldID').text))
+                img_pos.append((round(float(x_coord) / float(x_resol)),
+                                round(float(y_coord) / float(y_resol)),
+                                int(img.find('FieldID').text) - 1))  # ids - 1, original data starts from 1    
     else:
         for img in tag_Images:
             if img.find('ChannelName').text == reference_channel and img.find('PlaneID').text == '1':
@@ -150,7 +151,6 @@ def get_image_sizes_scan_auto(tag_Images, reference_channel, fovs):
     x_pos, y_pos, img_pos = get_positions_from_xml(tag_Images, reference_channel, fovs)
     default_img_width = int(tag_Images[0].find('ImageSizeX').text)
     default_img_height = int(tag_Images[0].find('ImageSizeY').text)
-
     # centering coordinates to 0,0
     leftmost = min(x_pos)
     top = max(y_pos)
@@ -276,7 +276,7 @@ def get_image_sizes_scan_auto(tag_Images, reference_channel, fovs):
         x_size.append([i[0] for i in row])
         y_size.append([i[1] for i in row])
         ids.append([i[2] for i in row])
-
+    
     return ids, x_size, y_size, ids_in_clusters, y_pos_in_clusters
 
 
