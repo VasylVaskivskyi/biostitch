@@ -174,7 +174,7 @@ class ImageStitcher:
             print('using parameters from loaded files')
             if not self._load_param_path.endswith('/'):
                 self._load_param_path = self._load_param_path + '/'
-            ids, x_size, y_size, y_pos = load_parameters(self._load_param_path, self._scan)
+            ids, x_size, y_size, self._y_pos = load_parameters(self._load_param_path, self._scan)
 
         # saving estimated parameters to files
         if self._save_param:
