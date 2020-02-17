@@ -16,7 +16,7 @@ def load_parameters(dir_path, scan):
         ids = load_txt(dir_path + 'image_ids.txt')
         x_size = load_txt(dir_path + 'x_sizes.txt')
         y_size = load_txt(dir_path + 'y_sizes.txt')
-        y_pos = load_txt(dir_path + 'y_pos.txt')
+        y_pos = load_txt(dir_path + 'y_pos.txt')[0]
 
     elif scan == 'manual':
         y_pos = None
