@@ -16,8 +16,10 @@ def load_parameters(dir_path, scan):
         ids = load_txt(dir_path + 'image_ids.txt')
         x_size = load_txt(dir_path + 'x_sizes.txt')
         y_size = load_txt(dir_path + 'y_sizes.txt')
+        y_pos = load_txt(dir_path + 'y_pos.txt')
 
     elif scan == 'manual':
+        y_pos = None
         ids = pd.read_csv(dir_path + 'image_ids.csv', index_col=0, header='infer', dtype='object')
         x_size = pd.read_csv(dir_path + 'x_sizes.csv', index_col=0, header='infer', dtype='int64')
         y_size = pd.read_csv(dir_path + 'y_sizes.csv', index_col=0, header='infer', dtype='int64')
@@ -34,10 +36,11 @@ def load_parameters(dir_path, scan):
                     ids.loc[i, j] = val
                 except ValueError:
                     pass
-    return ids, x_size, y_size
+
+    return ids, x_size, y_size, y_pos
 
 
-def save_parameters(dir_path, scan, ids, x_size, y_size):
+def save_parameters(dir_path, scan, ids, x_size, y_size, y_pos):
     if scan == 'auto':
         def save_txt(path, li):
             with open(path, 'w') as f:
@@ -47,6 +50,9 @@ def save_parameters(dir_path, scan, ids, x_size, y_size):
         save_txt(dir_path + 'image_ids.txt', ids)
         save_txt(dir_path + 'x_sizes.txt', x_size)
         save_txt(dir_path + 'y_sizes.txt', y_size)
+
+        with open(dir_path + 'y_pos.txt', 'w') as f:
+            f.write(','.join(str(i) for i in y_pos) + '\n')
     elif scan == 'manual':
         ids.to_csv(dir_path + 'image_ids.csv')
         x_size.to_csv(dir_path + 'x_sizes.csv')
