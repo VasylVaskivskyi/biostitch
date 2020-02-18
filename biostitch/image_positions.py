@@ -1,6 +1,7 @@
 import re
-from itertools import chain
 import xml.etree.ElementTree as ET
+from itertools import chain
+
 import numpy as np
 import pandas as pd
 
@@ -34,11 +35,11 @@ def get_positions_from_xml(tag_Images, reference_channel, fovs):
     if fovs is not None:
         for img in tag_Images:
             if img.find('ChannelName').text == reference_channel and img.find('PlaneID').text == '1' and int(img.find('FieldID').text) in fovs:
-                x_coord = round(float(img.find('PositionX').text), 9)  # limit precision to nm
-                y_coord = round(float(img.find('PositionY').text), 9)
+                x_coord = round(float(img.find('PositionX').text), 10)  # limit precision to nm
+                y_coord = round(float(img.find('PositionY').text), 10)
 
                 # convert position to pixels by dividing on resolution in nm
-                x_pos.append(round(x_coord / x_resol))  # x_resol[:cut_resol_x]
+                x_pos.append(round(x_coord / x_resol))
                 y_pos.append(round(y_coord / y_resol))
                 img_pos.append((round(x_coord / x_resol),
                                 round(y_coord / y_resol),
@@ -46,11 +47,11 @@ def get_positions_from_xml(tag_Images, reference_channel, fovs):
     else:
         for img in tag_Images:
             if img.find('ChannelName').text == reference_channel and img.find('PlaneID').text == '1':
-                x_coord = round(float(img.find('PositionX').text), 9)  # limit precision to nm
-                y_coord = round(float(img.find('PositionY').text), 9)
+                x_coord = round(float(img.find('PositionX').text), 10)  # limit precision to nm
+                y_coord = round(float(img.find('PositionY').text), 10)
 
                 # convert position to pixels by dividing on resolution in nm
-                x_pos.append(round(x_coord / x_resol))  # x_resol[:cut_resol_x]
+                x_pos.append(round(x_coord / x_resol))
                 y_pos.append(round(y_coord / y_resol))
                 img_pos.append((round(x_coord / x_resol),
                                 round(y_coord / y_resol),
@@ -210,17 +211,6 @@ def get_image_sizes_scan_auto(tag_Images, reference_channel, fovs):
     ids_in_clusters = [set(c) for c in c_ids]
     y_pos_in_clusters = [sorted(set(c)) for c in c_ypos]
 
-    y_range = sorted(set(y_pos))  # because set is unordered
-
-    """
-    for i in range(0, len(y_pos_in_clusters)):
-        first_img_size = y_pos_in_clusters[i][1] - y_pos_in_clusters[i][0]
-        diff = default_img_height - first_img_size
-        for j in range(1, len(y_pos_in_clusters[i])):
-            y_pos_in_clusters[i][j] += diff
-    """
-
-
     y_sizes = []
     for cluster in y_pos_in_clusters:
         y_sizes.extend(list(np.diff(cluster)))
@@ -229,8 +219,6 @@ def get_image_sizes_scan_auto(tag_Images, reference_channel, fovs):
     y_range = []
     for cluster in y_pos_in_clusters:
         y_range.append(sorted(set(cluster)))
-
-    #y_pos_in_clusters = list(chain.from_iterable(y_pos_in_clusters))
 
     # image coordinates arranged in rows by same y-coordinate
 
@@ -243,13 +231,7 @@ def get_image_sizes_scan_auto(tag_Images, reference_channel, fovs):
             else:
                 row = sorted(row, key=lambda x: x[0])  # sort by x coordinate
                 row_list.append(row)
-    """           
-    for i in range(0, len(y_range)):
-        row = [j for j in img_pos if j[1] == y_range[i]]
-        row = sorted(row, key=lambda x: x[0])  # sort by x coordinate
-        row_list.append(row)
-    """
-    print(row_list)
+
     # create image sizes based on difference in coordinates
     img_sizes = []
     row_sizes = []
@@ -296,7 +278,7 @@ def get_image_sizes_scan_auto(tag_Images, reference_channel, fovs):
         x_size.append([i[0] for i in row])
         y_size.append([i[1] for i in row])
         ids.append([i[2] for i in row])
-    
+
     y_pos = list(chain.from_iterable(y_pos_in_clusters))
 
     return ids, x_size, y_size, ids_in_clusters, y_pos

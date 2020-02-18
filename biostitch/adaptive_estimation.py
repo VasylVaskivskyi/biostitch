@@ -5,13 +5,15 @@ that can handle manual and automatically scanned image data sets.
 
 """
 
-from typing import List, Tuple, Union, Optional
 from copy import deepcopy
 from itertools import chain
+from typing import List, Tuple, Union
+
+import cv2 as cv
 import numpy as np
 import pandas as pd
-import cv2 as cv
-from .my_types import Image, DF, Series
+
+from .my_types import Image, DF
 
 
 class AdaptiveShiftEstimation:
