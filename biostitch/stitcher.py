@@ -166,7 +166,6 @@ class ImageStitcher:
                     self.generate_preview(ids, x_size, y_size, self._y_pos, self._preview_ome_meta, z_max_img_list)
                 del z_max_img_list
                 gc.collect()
-            print(self._y_pos)
         else:
             # loading previously estimated stitching parameters from files
             print('using parameters from loaded files')
