@@ -1,7 +1,7 @@
-from setuptools import setup, find_packages
+from io import open
 from os import path
 
-from io import open
+from setuptools import setup
 
 here = path.abspath(path.dirname(__file__))
 
@@ -11,7 +11,7 @@ with open(path.join(here, 'README.md'), encoding='utf-8') as f:
 
 setup(
     name='biostitch',
-    version='0.22',
+    version='0.3',
     description='Image stitcher for Opera Phenix',
     long_description=long_description,
     long_description_content_type='text/markdown',

@@ -1,66 +1,9 @@
+import re
 import xml.etree.ElementTree as ET
+from itertools import chain
+
 import numpy as np
 import pandas as pd
-
-# ----------- Get relative position of images with respect to central image ----------
-def median_position(val_list):
-    """find central image"""
-    return (len(val_list) // 2) + 1
-
-
-def assign_rel_pos(array):
-    """arrange images depending on how far they from central image"""
-    try:
-        array[0][0] > 0
-        array[0][0] < 0
-    except IndexError:
-        return []
-
-    if array[0][0] > 0:
-        for i in range(0, len(array)):
-            if array[i][2] > array[i - 1][2]:
-                array[i][0] += array[i - 1][0]
-            elif array[i][2] == array[i - 1][2]:
-                array[i][0] = array[i - 1][0]
-    elif array[0][0] < 0:
-        for i in range(len(array) - 1, -1, -1):  # reverse order
-            if array[i - 1][2] < array[i][2]:
-                array[i - 1][0] += array[i][0]
-            elif array[i - 1][2] == array[i][2]:
-                array[i - 1][0] = array[i][0]
-
-    return array
-
-
-def create_relative_position(array, center_field):
-    """find central image and sorts other values with respect to center"""
-
-    plus = []   # values displaced in y+ or x+ from center
-    minus = []  # values displaced in y- or x- from center
-    same = []   # values that occupy same place as center (e.g. y0, x1)
-    full_range = []
-    for i in range(0, len(array)):
-        if array[i] > center_field:
-            plus.append([1, i, array[i]])
-        elif array[i] < center_field:
-            minus.append([-1, i, array[i]])
-        else:
-            same.append([0, i, array[i]])
-
-    # sort by image coordinates from microscope
-    plus.sort(key = lambda x: x[2])
-    minus.sort(key = lambda x: x[2])
-
-    # create relative coordinates for images
-    plus_sorted = assign_rel_pos(plus)
-    minus_sorted = assign_rel_pos(minus)
-
-    # combine all coordinates into one list
-    full_range.extend(minus_sorted)
-    full_range.extend(same)
-    full_range.extend(plus_sorted)
-    
-    return full_range
 
 
 def load_necessary_xml_tags(xml_path):
@@ -72,49 +15,18 @@ def load_necessary_xml_tags(xml_path):
         xml_file = f.read()
         f.close()
     # remove this tag to avoid dealing with formatting like this {http://www.perkinelmer.com/PEHH/HarmonyV5}Image
-    xml_file = xml_file.replace('xmlns="http://www.perkinelmer.com/PEHH/HarmonyV5"', '')
-
+    xml_file = re.sub(r'xmlns="http://www.perkinelmer.com/PEHH/HarmonyV\d"', '',xml_file)
     xml = ET.fromstring(xml_file)
     tag_Images = xml.find('Images')
-    tag_Name = xml.find('Plates').find('Plate').find('Name').text.replace(' ','_')
+    tag_Name = xml.find('Plates').find('Plate').find('Name').text.replace(' ', '_')
     tag_MeasurementStartTime = xml.find('Plates').find('Plate').find('MeasurementStartTime').text
     return tag_Images, tag_Name, tag_MeasurementStartTime
 
 
 def get_positions_from_xml(tag_Images, reference_channel, fovs):
     """read xml metadata and find image metadata (position, channel name) """
-    x_resol = '{:.20f}'.format(float(tag_Images[0].find('ImageResolutionX').text))
-    y_resol = '{:.20f}'.format(float(tag_Images[0].find('ImageResolutionY').text))
-
-    x_pos = []
-    y_pos = []
-    if fovs is not None:
-        for img in tag_Images:
-            if img.find('ChannelName').text == reference_channel and img.find('PlaneID').text == '1' and img.find('FieldID').text in fovs:
-                x_coord = '{:.9f}'.format(float(img.find('PositionX').text))  # limit precision to nm
-                y_coord = '{:.9f}'.format(float(img.find('PositionY').text))
-
-                # convert position to pixels by dividing on resolution in nm
-                x_pos.append(round(float(x_coord) / float(x_resol)))
-                y_pos.append(round(float(y_coord) / float(y_resol)))
-    else:
-        for img in tag_Images:
-            if img.find('ChannelName').text == reference_channel and img.find('PlaneID').text == '1':
-                x_coord = '{:.9f}'.format(float(img.find('PositionX').text))  # limit precision to nm
-                y_coord = '{:.9f}'.format(float(img.find('PositionY').text))
-
-                # convert position to pixels by dividing on resolution in nm
-                x_pos.append(round(float(x_coord) / float(x_resol)))
-                y_pos.append(round(float(y_coord) / float(y_resol)))
-
-    return x_pos, y_pos
-
-
-def get_positions_from_xml_scan_mode_auto(tag_Images, reference_channel, fovs):
-    """read xml metadata and find image metadata (position, channel name) """
-
-    x_resol = '{:.20f}'.format(float(tag_Images[0].find('ImageResolutionX').text))
-    y_resol = '{:.20f}'.format(float(tag_Images[0].find('ImageResolutionY').text))
+    x_resol = round(float(tag_Images[0].find('ImageResolutionX').text), 23)
+    y_resol = round(float(tag_Images[0].find('ImageResolutionY').text), 23)
 
     x_pos = []
     y_pos = []
@@ -122,141 +34,38 @@ def get_positions_from_xml_scan_mode_auto(tag_Images, reference_channel, fovs):
     img_pos = []
     if fovs is not None:
         for img in tag_Images:
-            if img.find('ChannelName').text == reference_channel and img.find('PlaneID').text == '1' and img.find('FieldID').text in fovs:
-                x_coord = '{:.9f}'.format(float(img.find('PositionX').text))  # limit precision to nm
-                y_coord = '{:.9f}'.format(float(img.find('PositionY').text))
+            if img.find('ChannelName').text == reference_channel and img.find('PlaneID').text == '1' and int(img.find('FieldID').text) in fovs:
+                x_coord = round(float(img.find('PositionX').text), 10)  # limit precision to nm
+                y_coord = round(float(img.find('PositionY').text), 10)
 
                 # convert position to pixels by dividing on resolution in nm
-                x_pos.append(round(float(x_coord) / float(x_resol)))  # x_resol[:cut_resol_x]
-                y_pos.append(round(float(y_coord) / float(y_resol)))
-                img_pos.append((round(float(x_coord) / float(x_resol)), round(float(y_coord) / float(y_resol)), img.find('FieldID').text))
+                x_pos.append(round(x_coord / x_resol))
+                y_pos.append(round(y_coord / y_resol))
+                img_pos.append((round(x_coord / x_resol),
+                                round(y_coord / y_resol),
+                                int(img.find('FieldID').text) - 1))  # ids - 1, original data starts from 1
     else:
         for img in tag_Images:
             if img.find('ChannelName').text == reference_channel and img.find('PlaneID').text == '1':
-                x_coord = '{:.9f}'.format(float(img.find('PositionX').text))  # limit precision to nm
-                y_coord = '{:.9f}'.format(float(img.find('PositionY').text))
+                x_coord = round(float(img.find('PositionX').text), 10)  # limit precision to nm
+                y_coord = round(float(img.find('PositionY').text), 10)
 
                 # convert position to pixels by dividing on resolution in nm
-                x_pos.append(round(float(x_coord) / float(x_resol)))  # x_resol[:cut_resol_x]
-                y_pos.append(round(float(y_coord) / float(y_resol)))
-                img_pos.append( (round(float(x_coord) / float(x_resol)), round(float(y_coord) / float(y_resol)), img.find('FieldID').text) )
+                x_pos.append(round(x_coord / x_resol))
+                y_pos.append(round(y_coord / y_resol))
+                img_pos.append((round(x_coord / x_resol),
+                                round(y_coord / y_resol),
+                                int(img.find('FieldID').text) - 1))  # ids - 1, original data starts from 1
 
     return x_pos, y_pos, img_pos
 
 
-def get_image_positions(tag_Images, reference_channel, fovs):
-    """specify path to read xml file
-    function finds metadata about image location, computes
-    relative location to central image, and size in pixels of each image"""
-    # get microscope coordinates of images from xml file
-    x_pos, y_pos = get_positions_from_xml(tag_Images, reference_channel, fovs)
-
-    # find central field location in the list
-    center_field_n = median_position(x_pos)  # x or y doesn't matter
-
-    # find coordinates of central field
-    center_field_x_pos = x_pos[center_field_n]
-    center_field_y_pos = y_pos[center_field_n]
-
-    # create relative coordinates for all images with respect to central field
-    relative_x = create_relative_position(x_pos, center_field_x_pos)
-    relative_y = create_relative_position(y_pos, center_field_y_pos)
-
-    # combine x nad y coordinates
-    id_full_range = []
-
-    for i in relative_y:
-        for j in relative_x:
-            if i[1] == j[1]:  # if field id same
-                id_full_range.append( [j[0], i[0], j[1]] )  # x position, y position, field id
-
-    x_full_range = []
-    y_full_range = []
-
-    for pos in id_full_range:
-        x_full_range.append([pos[0], pos[1], abs(x_pos[pos[2]]) ])
-        y_full_range.append([pos[0], pos[1], abs(y_pos[pos[2]]) ])
-
-    # get range of images in y axis
-    y_range = list(set([i[0] for i in relative_y]))
-    y_range.sort()
-
-    # get range of images in x axis
-    x_range = list(set([i[0] for i in relative_x]))
-    x_range.sort()
-
-    # arrange relative coordinates into the matrix representing rows and columns of full image
-    id_df = pd.DataFrame(columns=x_range, index=y_range)
-    id_df.sort_index(ascending=False, inplace=True)
-    x_df = id_df.copy()
-    y_df = id_df.copy()
-
-    for i in range(0, len(id_full_range)):
-        id_df.loc[id_full_range[i][1], id_full_range[i][0]] = id_full_range[i][2]
-        x_df.loc[x_full_range[i][1], x_full_range[i][0]] = x_full_range[i][2]
-        y_df.loc[y_full_range[i][1], y_full_range[i][0]] = y_full_range[i][2]
-
-    x_df = x_df.ffill(axis=0).bfill(axis=0)
-    y_df = y_df.ffill(axis=1).bfill(axis=1)
-
-    # remove columns and rows that have all na values
-    na_only_cols = x_df.columns[x_df.isna().all(axis=0)]
-    na_only_rows = y_df.index[y_df.isna().all(axis=1)]
-
-    if na_only_cols.empty is False or na_only_rows.empty is False:
-        id_df.drop(index=na_only_rows, columns=na_only_cols, inplace=True)
-        x_df.drop(index=na_only_rows, columns=na_only_cols, inplace=True)
-        y_df.drop(index=na_only_rows, columns=na_only_cols, inplace=True)
-
-    id_df.fillna('zeros', inplace=True)
-
-    return id_df, x_df, y_df
-
-
-def get_image_sizes_manual(tag_Images, reference_channel, fovs):
-    id_df, x_df, y_df = get_image_positions(tag_Images, reference_channel, fovs)
-    nrows, ncols = id_df.shape
-    # pd.options.display.width = 0
-    x_size = pd.DataFrame(columns=x_df.columns, index=x_df.index)
-    y_size = pd.DataFrame(columns=y_df.columns, index=y_df.index)
-
-    # assuming that all images are of the same size, so default image size from first image in xml are taken
-    default_img_width = int(tag_Images[0].find('ImageSizeX').text)
-    default_img_height = int(tag_Images[0].find('ImageSizeY').text)
-
-    # set size of first column and first row to the size of single picture
-    x_size.iloc[:, 0] = default_img_width
-    y_size.iloc[0, :] = default_img_height
-
-    # fill nan with mean values of cols and rows
-    for n in range(1, ncols):
-        x_size.iloc[:, n] = abs(x_df.iloc[:, n - 1].subtract(x_df.iloc[:, n]))
-        x_size.iloc[:, n] = int(round(x_size.iloc[:, n].mean()))
-
-    for n in range(1, nrows):
-        y_size.iloc[n, :] = abs(y_df.iloc[n, :].subtract(y_df.iloc[n - 1, :]))
-        y_size.iloc[n, :] = int(round(y_size.iloc[n, :].mean()))
-
-    # replace values that are not in fovs with empty tiles
-
+def get_image_positions_scan_manual(tag_Images, reference_channel, fovs):
+    """ Specify path to read xml file.
+        Computes position of each picture and zero padding.
     """
-    for n in range(0, ncols):
-        y_size.iloc[1:, n] = int(round(y_size.iloc[1:, n].mean()))
-
-    for n in range(0, nrows):
-        x_size.iloc[n, 1:] = int(round(x_size.iloc[n, 1:].mean()))
-    """
-    return id_df, x_size, y_size
-
-
-def get_image_sizes_auto(tag_Images, reference_channel, fovs):
-    """specify path to read xml file
-    function finds metadata about image location, computes
-    relative location to central image, and size in pixels of each image"""
     # get microscope coordinates of images from xml file
-    x_pos, y_pos, img_pos = get_positions_from_xml_scan_mode_auto(tag_Images, reference_channel, fovs)
-    default_img_width = int(tag_Images[0].find('ImageSizeX').text)
-    default_img_height = int(tag_Images[0].find('ImageSizeY').text)
+    x_pos, y_pos, img_pos = get_positions_from_xml(tag_Images, reference_channel, fovs)
 
     # centering coordinates to 0,0
     leftmost = min(x_pos)
@@ -284,34 +93,154 @@ def get_image_sizes_auto(tag_Images, reference_channel, fovs):
             x_pos = [i - leftmost for i in x_pos]
             y_pos = [top - i for i in y_pos]
 
-    y_range = set(y_pos)
-    y_range_sorted = sorted(y_range)
-    y_sizes = [default_img_height]
+    y_range = sorted(set(y_pos))  # because set is unordered
+    x_range = sorted(set(x_pos))
+    # sort image coordinates int rows 
+    row_list = []
+    for y in y_range:
+        row = [i for i in img_pos if i[1] == y]
+        if len(row) < len(x_range):
+            row_x_range = [i[0] for i in row]
+            row_y = row[0][1]
+            for x in x_range:
+                if x not in row_x_range:
+                    row.append((x, row_y, 'zeros'))
 
-    for i in range(0, len(y_range_sorted)-1):
-        y_sizes.append(abs(y_range_sorted[i] - y_range_sorted[i+1]))
+        row = sorted(row, key=lambda x: x[0])  # sort by x coordinate
+        row_list.append(row)
+
+    ids = []
+    x_pos = []
+    y_pos = []
+    for row in row_list:
+        x_pos.append([i[0] for i in row])
+        y_pos.append([i[1] for i in row])
+        ids.append([i[2] for i in row])
+
+    return ids, x_pos, y_pos
+
+
+def get_image_sizes_scan_manual(tag_Images, reference_channel, fovs):
+    ids, x_pos, y_pos = get_image_positions_scan_manual(tag_Images, reference_channel, fovs)
+
+    ids = np.array(ids)
+    x_pos = np.array(x_pos)
+    y_pos = np.array(y_pos)
+
+    # assuming that all images are of the same size, so default image size from first image in xml are taken
+    default_img_width = int(tag_Images[0].find('ImageSizeX').text)
+    default_img_height = int(tag_Images[0].find('ImageSizeY').text)
+
+    # set size of first column and first row to the size of single picture
+    x_size = np.diff(x_pos, axis=1)
+    y_size = np.diff(y_pos, axis=0)
+
+    last_x_col = np.array([[default_img_width]] * ids.shape[0])
+    last_y_row = np.array([[default_img_height] * ids.shape[1]])
+    x_size = np.concatenate((x_size, last_x_col), axis=1)
+    y_size = np.concatenate((y_size, last_y_row), axis=0)
+
+    return ids, x_size, y_size
+
+
+def get_image_sizes_scan_auto(tag_Images, reference_channel, fovs):
+    """specify path to read xml file
+    function finds metadata about image location, computes
+    relative location to central image, and size in pixels of each image
+    """
+    # get microscope coordinates of images from xml file
+    x_pos, y_pos, img_pos = get_positions_from_xml(tag_Images, reference_channel, fovs)
+    default_img_width = int(tag_Images[0].find('ImageSizeX').text)
+    default_img_height = int(tag_Images[0].find('ImageSizeY').text)
+    # centering coordinates to 0,0
+    leftmost = min(x_pos)
+    top = max(y_pos)
+
+    if leftmost < 0:
+        leftmost = abs(leftmost)
+        if top < 0:
+            top = abs(top)
+            img_pos = [(pos[0] + leftmost, abs(pos[1]) - top, pos[2]) for pos in img_pos]
+            x_pos = [i + leftmost for i in x_pos]
+            y_pos = [abs(i) - top for i in y_pos]
+        else:
+            img_pos = [(pos[0] + leftmost, top - pos[1], pos[2]) for pos in img_pos]
+            x_pos = [i + leftmost for i in x_pos]
+            y_pos = [top - i for i in y_pos]
+    else:
+        if top < 0:
+            top = abs(top)
+            img_pos = [(pos[0] - leftmost, abs(pos[1]) - top, pos[2]) for pos in img_pos]
+            x_pos = [i - leftmost for i in x_pos]
+            y_pos = [abs(i) - top for i in y_pos]
+        else:
+            img_pos = [(pos[0] - leftmost, top - pos[1], pos[2]) for pos in img_pos]
+            x_pos = [i - leftmost for i in x_pos]
+            y_pos = [top - i for i in y_pos]
+
+    from scipy.cluster.hierarchy import fclusterdata
+    z = np.array(list(zip(x_pos, y_pos)))
+
+    clusters = fclusterdata(z, t=default_img_height, criterion='distance')
+
+    c = clusters[0]
+    c_ids = []
+    this_cluster_ids = []
+    this_cluster_ypos = []
+    c_ypos = []
+
+    for i in range(0, len(clusters)):
+        this_val = clusters[i]
+        if fovs is None:
+            f_id = i
+        else:
+            f_id = fovs[i]
+        if this_val == c:
+            this_cluster_ids.append(f_id)
+            this_cluster_ypos.append(y_pos[i])
+        else:
+            c = this_val
+            c_ids.append(this_cluster_ids)
+            c_ypos.append(this_cluster_ypos)
+            this_cluster_ids = [f_id]
+            this_cluster_ypos = [y_pos[i]]
+        if i == len(clusters) - 1:
+            c_ids.append(this_cluster_ids)
+            c_ypos.append(this_cluster_ypos)
+
+    ids_in_clusters = [set(c) for c in c_ids]
+    y_pos_in_clusters = [sorted(set(c)) for c in c_ypos]
+
+    y_sizes = []
+    for cluster in y_pos_in_clusters:
+        y_sizes.extend(list(np.diff(cluster)))
+        y_sizes.append(default_img_height)
+
+    y_range = []
+    for cluster in y_pos_in_clusters:
+        y_range.append(sorted(set(cluster)))
 
     # image coordinates arranged in rows by same y-coordinate
+
     row_list = []
-    for i in range(0, len(y_range_sorted)):
-        row = [j for j in img_pos if j[1] == y_range_sorted[i]]
-        row_list.append(row)
+    for cluster in y_range:
+        for y in cluster:
+            row = [j for j in img_pos if j[1] == y]
+            if row == []:
+                continue
+            else:
+                row = sorted(row, key=lambda x: x[0])  # sort by x coordinate
+                row_list.append(row)
 
     # create image sizes based on difference in coordinates
     img_sizes = []
     row_sizes = []
-    for row in range(0, len(row_list)):
-        img_coords = [row[0] for row in row_list[row]]
-        img_ids = [int(row[2]) - 1 for row in row_list[row]]
-
-        if img_coords[0] < img_coords[-1]:
-            pass
-        elif img_coords[0] > img_coords[-1]:
-            img_coords.reverse()
-            img_ids.reverse()
+    for row in row_list:
+        img_coords = [i[0] for i in row]
+        img_ids = [i[2] for i in row]
 
         # start each row with zero padding and full width image
-        img_size = [(img_coords[0], 'zeros'), (default_img_width, img_ids[0])]
+        img_size = [(img_coords[0], 'zeros'), (img_coords[1] - img_coords[0], img_ids[0])]
         # detect gaps between images
         for i in range(1, len(img_coords)):
             size = img_coords[i] - img_coords[i - 1]
@@ -342,7 +271,18 @@ def get_image_sizes_auto(tag_Images, reference_channel, fovs):
     # total_height = sum(y_sizes)
     # total_width = max_width
 
-    return img_sizes
+    ids = []
+    x_size = []
+    y_size = []
+    for row in img_sizes:
+        x_size.append([i[0] for i in row])
+        y_size.append([i[1] for i in row])
+        ids.append([i[2] for i in row])
+
+    y_pos = list(chain.from_iterable(y_pos_in_clusters))
+
+    return ids, x_size, y_size, ids_in_clusters, y_pos
+
 
 # ----------- Get full path of each image im xml ----------
 
@@ -353,7 +293,8 @@ def get_target_per_channel_arrangement(tag_Images, target):
     metadata_list = []
     for i in tag_Images:
         # field id, plane id, channel name, file name
-        metadata_list.append([int(i.find('FieldID').text), int(i.find('PlaneID').text), i.find('ChannelName').text, i.find('URL').text])
+        metadata_list.append(
+            [int(i.find('FieldID').text), int(i.find('PlaneID').text), i.find('ChannelName').text, i.find('URL').text])
 
     metadata_table = pd.DataFrame(metadata_list, columns=['field_id', 'plane_id', 'channel_name', 'file_name'])
 

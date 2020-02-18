@@ -1,6 +1,6 @@
-import uuid
 import json
 import re
+import uuid
 
 
 def parse_extra_meta(meta):
