@@ -40,9 +40,9 @@ def get_positions_from_xml(tag_Images, reference_channel, fovs):
                 # convert position to pixels by dividing on resolution in nm
                 x_pos.append(round(x_coord / x_resol))  # x_resol[:cut_resol_x]
                 y_pos.append(round(y_coord / y_resol))
-                img_pos.append(round(x_coord / x_resol),
+                img_pos.append((round(x_coord / x_resol),
                                 round(y_coord / y_resol),
-                                int(img.find('FieldID').text) - 1)  # ids - 1, original data starts from 1
+                                int(img.find('FieldID').text) - 1))  # ids - 1, original data starts from 1
     else:
         for img in tag_Images:
             if img.find('ChannelName').text == reference_channel and img.find('PlaneID').text == '1':
@@ -52,9 +52,9 @@ def get_positions_from_xml(tag_Images, reference_channel, fovs):
                 # convert position to pixels by dividing on resolution in nm
                 x_pos.append(round(x_coord / x_resol))  # x_resol[:cut_resol_x]
                 y_pos.append(round(y_coord / y_resol))
-                img_pos.append(round(x_coord / x_resol),
+                img_pos.append((round(x_coord / x_resol),
                                 round(y_coord / y_resol),
-                                int(img.find('FieldID').text) - 1)  # ids - 1, original data starts from 1
+                                int(img.find('FieldID').text) - 1))  # ids - 1, original data starts from 1
 
     return x_pos, y_pos, img_pos
 
@@ -225,16 +225,31 @@ def get_image_sizes_scan_auto(tag_Images, reference_channel, fovs):
     for cluster in y_pos_in_clusters:
         y_sizes.extend(list(np.diff(cluster)))
         y_sizes.append(default_img_height)
-        
-    y_pos_in_clusters = list(chain.from_iterable(y_pos_in_clusters))
+
+    y_range = []
+    for cluster in y_pos_in_clusters:
+        y_range.append(sorted(set(cluster)))
+
+    #y_pos_in_clusters = list(chain.from_iterable(y_pos_in_clusters))
 
     # image coordinates arranged in rows by same y-coordinate
+
     row_list = []
+    for cluster in y_range:
+        for y in cluster:
+            row = [j for j in img_pos if j[1] == y]
+            if row == []:
+                continue
+            else:
+                row = sorted(row, key=lambda x: x[0])  # sort by x coordinate
+                row_list.append(row)
+    """           
     for i in range(0, len(y_range)):
         row = [j for j in img_pos if j[1] == y_range[i]]
         row = sorted(row, key=lambda x: x[0])  # sort by x coordinate
         row_list.append(row)
-
+    """
+    print(row_list)
     # create image sizes based on difference in coordinates
     img_sizes = []
     row_sizes = []
@@ -282,7 +297,9 @@ def get_image_sizes_scan_auto(tag_Images, reference_channel, fovs):
         y_size.append([i[1] for i in row])
         ids.append([i[2] for i in row])
     
-    return ids, x_size, y_size, ids_in_clusters, y_pos_in_clusters
+    y_pos = list(chain.from_iterable(y_pos_in_clusters))
+
+    return ids, x_size, y_size, ids_in_clusters, y_pos
 
 
 # ----------- Get full path of each image im xml ----------
