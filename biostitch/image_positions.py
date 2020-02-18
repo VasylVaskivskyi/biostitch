@@ -24,8 +24,8 @@ def load_necessary_xml_tags(xml_path):
 
 def get_positions_from_xml(tag_Images, reference_channel, fovs):
     """read xml metadata and find image metadata (position, channel name) """
-    x_resol = '{:.20f}'.format(float(tag_Images[0].find('ImageResolutionX').text))
-    y_resol = '{:.20f}'.format(float(tag_Images[0].find('ImageResolutionY').text))
+    x_resol = round(float(tag_Images[0].find('ImageResolutionX').text), 20)
+    y_resol = round(float(tag_Images[0].find('ImageResolutionY').text), 20)
 
     x_pos = []
     y_pos = []
@@ -34,27 +34,27 @@ def get_positions_from_xml(tag_Images, reference_channel, fovs):
     if fovs is not None:
         for img in tag_Images:
             if img.find('ChannelName').text == reference_channel and img.find('PlaneID').text == '1' and int(img.find('FieldID').text) in fovs:
-                x_coord = '{:.9f}'.format(float(img.find('PositionX').text))  # limit precision to nm
-                y_coord = '{:.9f}'.format(float(img.find('PositionY').text))
+                x_coord = round(float(img.find('PositionX').text), 9)  # limit precision to nm
+                y_coord = round(float(img.find('PositionY').text), 9)
 
                 # convert position to pixels by dividing on resolution in nm
-                x_pos.append(round(float(x_coord) / float(x_resol)))  # x_resol[:cut_resol_x]
-                y_pos.append(round(float(y_coord) / float(y_resol)))
-                img_pos.append((round(float(x_coord) / float(x_resol)),
-                                round(float(y_coord) / float(y_resol)),
-                                int(img.find('FieldID').text) - 1))  # ids - 1, original data starts from 1    
+                x_pos.append(round(x_coord / x_resol))  # x_resol[:cut_resol_x]
+                y_pos.append(round(y_coord / y_resol))
+                img_pos.append(round(x_coord / x_resol),
+                                round(y_coord / y_resol),
+                                int(img.find('FieldID').text) - 1)  # ids - 1, original data starts from 1
     else:
         for img in tag_Images:
             if img.find('ChannelName').text == reference_channel and img.find('PlaneID').text == '1':
-                x_coord = '{:.9f}'.format(float(img.find('PositionX').text))  # limit precision to nm
-                y_coord = '{:.9f}'.format(float(img.find('PositionY').text))
+                x_coord = round(float(img.find('PositionX').text), 9)  # limit precision to nm
+                y_coord = round(float(img.find('PositionY').text), 9)
 
                 # convert position to pixels by dividing on resolution in nm
-                x_pos.append(round(float(x_coord) / float(x_resol)))  # x_resol[:cut_resol_x]
-                y_pos.append(round(float(y_coord) / float(y_resol)))
-                img_pos.append((round(float(x_coord) / float(x_resol)),
-                                round(float(y_coord) / float(y_resol)),
-                                int(img.find('FieldID').text) - 1))  # ids - 1, original data starts from 1
+                x_pos.append(round(x_coord / x_resol))  # x_resol[:cut_resol_x]
+                y_pos.append(round(y_coord / y_resol))
+                img_pos.append(round(x_coord / x_resol),
+                                round(y_coord / y_resol),
+                                int(img.find('FieldID').text) - 1)  # ids - 1, original data starts from 1
 
     return x_pos, y_pos, img_pos
 
