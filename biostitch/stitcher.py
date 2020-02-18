@@ -165,7 +165,7 @@ class ImageStitcher:
                     self.generate_preview(ids, x_size, y_size, self._y_pos, self._preview_ome_meta, z_max_img_list)
                 del z_max_img_list
                 gc.collect()
-           
+            print(self._y_pos)
         else:
             # loading previously estimated stitching parameters from files
             print('using parameters from loaded files')
@@ -184,7 +184,6 @@ class ImageStitcher:
         # width and height of single plain
         if self._scan == 'auto':
             width = sum(x_size[0])
-            print(y_size)
             height = sum([row[0] for row in y_size])
         elif self._scan == 'manual':
             width = sum(x_size.iloc[0, :])
