@@ -25,8 +25,8 @@ def load_necessary_xml_tags(xml_path):
 
 def get_positions_from_xml(tag_Images, reference_channel, fovs):
     """read xml metadata and find image metadata (position, channel name) """
-    x_resol = round(float(tag_Images[0].find('ImageResolutionX').text), 20)
-    y_resol = round(float(tag_Images[0].find('ImageResolutionY').text), 20)
+    x_resol = round(float(tag_Images[0].find('ImageResolutionX').text), 23)
+    y_resol = round(float(tag_Images[0].find('ImageResolutionY').text), 23)
 
     x_pos = []
     y_pos = []
