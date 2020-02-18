@@ -165,10 +165,7 @@ class ImageStitcher:
                     self.generate_preview(ids, x_size, y_size, self._y_pos, self._preview_ome_meta, z_max_img_list)
                 del z_max_img_list
                 gc.collect()
-            else:
-                ids = pd.DataFrame(ids)
-                x_size = pd.DataFrame(x_size)
-                y_size = pd.DataFrame(y_size)
+           
         else:
             # loading previously estimated stitching parameters from files
             print('using parameters from loaded files')
