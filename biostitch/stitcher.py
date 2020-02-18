@@ -187,6 +187,7 @@ class ImageStitcher:
         # width and height of single plain
         if self._scan == 'auto':
             width = sum(x_size[0])
+            print(y_size)
             height = sum([row[0] for row in y_size])
         elif self._scan == 'manual':
             width = sum(x_size.iloc[0, :])

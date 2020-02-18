@@ -211,7 +211,6 @@ def get_image_sizes_scan_auto(tag_Images, reference_channel, fovs):
     y_pos_in_clusters = [sorted(set(c)) for c in c_ypos]
 
     y_range = sorted(set(y_pos))  # because set is unordered
-    x_range = sorted(set(x_pos))
 
     """
     for i in range(0, len(y_pos_in_clusters)):
