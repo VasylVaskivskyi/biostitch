@@ -1,23 +1,36 @@
 from io import open
 from os import path
 
-from setuptools import setup
+import sys
+import os
 
-here = path.abspath(path.dirname(__file__))
+from setuptools import setup, find_packages
 
-# Get the long description from the README file
-with open(path.join(here, 'README.md'), encoding='utf-8') as f:
-    long_description = f.read()
+_base_dir = os.path.dirname(os.path.abspath(__file__))
+_requirements = os.path.join(_base_dir, 'requirements.txt')
+
+install_requirements = []
+with open(_requirements) as f:
+    install_requirements = f.read().splitlines()
+
+long_description = ""
+with open(os.path.join(_base_dir, 'README.md'), 'rb') as f:
+    long_description = f.read().decode('utf-8')
 
 setup(
     name='biostitch',
-    version='0.3',
-    description='Image stitcher for Opera Phenix',
-    long_description=long_description,
-    long_description_content_type='text/markdown',
+    version='0.3.0',
     url='https://github.com/VasylVaskivskyi/biostitch',
     author='Vasyl Vaskivskyi',
     author_email='vaskivskyi.v@gmail.com',
+    description='Image stitcher for Opera Phenix',
+    long_description=long_description,
+    long_description_content_type='text/markdown',
+    packages=find_packages(exclude=['ez_setup']),
+    include_package_data=True,
+    zip_safe=False,
+    install_requires=install_requirements,
+    license='Apache Software License',
     classifiers=[
         'Development Status :: 4 - Beta',
         'Intended Audience :: Science/Research',
@@ -28,11 +41,9 @@ setup(
         'Programming Language :: Python :: 3.8',
     ],
     python_requires='>=3.6, <4',
-    install_requires=['numpy >= 1.17',
-                      'pandas >= 0.25',
-                      'imagecodecs-lite',
-                      'tifffile >= 2019.7.26',
-                      'opencv-contrib-python >= 4.0',
-                      'dask[complete] >=2.6.0'
-                      ]
+    entry_points={
+        'console_scripts': [
+            'biostitch=biostitch.__main__:main',
+        ],
+    },
 )
