@@ -1,0 +1,6 @@
+numpy~=1.17
+pandas~=0.25
+dask[complete]~=2.12.0
+imagecodecs-lite
+tifffile~=2019.7.26
+opencv-contrib-python~=4.0
