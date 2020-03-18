@@ -46,7 +46,8 @@ This program uses microscope coordinates from `Index.idx.xml` to stitch images. 
 ## Example usage
 
 `cd biostitch`\
-`conda activate stitching`\
+`conda env create`
+`conda activate biostitch`\
 `python -m biostitch --img_dir "/path/to/dataset/Images/" --out_dir "/path/to/out/directory/" 
 --scan "manual" --mode "maxz" --adaptive --make_preview --stitch_channels "DAPI" "ALEXA 568" --correct_illumination_in_channels "DAPI"
 --extra_meta "{ \"channel_names\": { \"DAPI\": \"nuclei\", \"Alexa 488\": \"some gene\" } }"

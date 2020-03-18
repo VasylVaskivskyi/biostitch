@@ -1,0 +1,14 @@
+name: biostitch
+channels:
+    - conda-forge
+dependencies:
+    - numpy
+    - python=3.7
+    - pandas
+    - scipy
+    - dask
+    - pip
+    - pip:
+        - imagecodecs-lite
+        - tifffile
+        - opencv-contrib-python
