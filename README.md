@@ -46,7 +46,7 @@ This program uses microscope coordinates from `Index.idx.xml` to stitch images. 
 ## Example usage
 
 `cd biostitch`\
-`conda activate stitching`\
+`conda activate biostitch`\
 `python -m biostitch --img_dir "/path/to/dataset/Images/" --out_dir "/path/to/out/directory/" 
 --scan "manual" --mode "maxz" --adaptive --make_preview --stitch_channels "DAPI" "ALEXA 568" --correct_illumination_in_channels "DAPI"
 --extra_meta "{ \"channel_names\": { \"DAPI\": \"nuclei\", \"Alexa 488\": \"some gene\" } }"
@@ -63,9 +63,9 @@ If you want to install `dask` with `pip`, use command `pip install "dask[complet
 
 **Installation example for conda**
 
-`conda create -n stitching python=3.7 numpy pandas dask`
+`conda create -n biostich python=3.7 numpy pandas dask`
 
-`source activate stitching`
+`source activate biostitch`
 
 `pip install imagecodecs-lite tifffile opencv-contrib-python`
 
