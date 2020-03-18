@@ -2,12 +2,12 @@ name: biostitch
 channels:
     - conda-forge
 dependencies:
-    - numpy
     - python=3.7
+    - pip
+    - numpy
     - pandas
     - scipy
     - dask
-    - pip
     - pip:
         - imagecodecs-lite
         - tifffile
