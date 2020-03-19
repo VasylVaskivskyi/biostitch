@@ -176,6 +176,8 @@ class AdaptiveShiftEstimation:
         y_sizes = []
     
         for cls in rows_in_clusters:
+            if cls == []:
+                continue
             cluster = list(chain(*cls))
             micro_ids_sub = []
             micro_x_sizes_sub = []
@@ -204,7 +206,7 @@ class AdaptiveShiftEstimation:
             this_row_x_sizes_from_micro = micro_x_sizes[row]  # image size from microscope meta to calculate overlap
             this_row_x_sizes = self.find_shift_x_scan_auto(images, this_row_ids, this_row_x_sizes_from_micro)
             est_x_sizes.append(this_row_x_sizes)
-        
+
         # calculating zero padding for image rows
         max_row_width = max([sum(row) for row in est_x_sizes])
         for row in range(0, len(est_x_sizes)):

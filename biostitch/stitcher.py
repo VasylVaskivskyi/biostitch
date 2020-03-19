@@ -87,8 +87,11 @@ class ImageStitcher:
 
     def load_metadata(self):
         tag_Images, tag_Name, tag_MeasurementStartTime = load_necessary_xml_tags(self._xml_path)
-        field_path_list = get_image_paths_for_fields_per_channel(self._img_dir, tag_Images)
-        plane_path_list = get_image_paths_for_planes_per_channel(self._img_dir, tag_Images)
+        if self._fovs is not None:
+            self._fovs = [int(f) for f in self._fovs.split(',')]
+
+        field_path_list = get_image_paths_for_fields_per_channel(self._img_dir, tag_Images, self._fovs)
+        plane_path_list = get_image_paths_for_planes_per_channel(self._img_dir, tag_Images, self._fovs)
         nchannels = len(plane_path_list.keys())
         channel_names = list(plane_path_list.keys())
         channel_ids = {ch: i for i, ch in enumerate(channel_names)}
@@ -128,9 +131,6 @@ class ImageStitcher:
             self._img_name = tag_Name
         if not self._img_name.endswith(('.tif', '.tiff')):
             self._img_name += '.tif'
-        if self._fovs is not None:
-            self._fovs = [int(f) for f in self._fovs.split(',')]
-
         return tag_Images, field_path_list, plane_path_list
 
     def estimate_image_sizes(self, tag_Images, field_path_list):

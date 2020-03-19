@@ -18,7 +18,7 @@ def alphaNumOrder(string: str) -> str:
                     else x for x in re.split(r'(\d+)', string)])
 
 
-def read_images(path: str, is_dir: bool) -> list:
+def read_images(path: str, is_dir: bool) -> List[Image]:
     """ Rread images in natural order (with respect to numbers) """
 
     allowed_extensions = ('tif', 'tiff')
@@ -40,7 +40,7 @@ def read_images(path: str, is_dir: bool) -> list:
     return img_list
 
 
-def equalize_histogram(img_list: List[Image]) -> list:
+def equalize_histogram(img_list: List[Image]) -> List[Image]:
     """ Function for adaptive normalization of image histogram CLAHE """
     nrows, ncols = img_list[0].shape
     grid_size = [int(round(max((ncols, nrows)) / 20))] * 2
@@ -74,16 +74,13 @@ def create_z_projection_for_fov(channel_name: str, path_list: list) -> List[Imag
 
 def stitch_z_projection(channel_name: str, fields_path_list: list,
                         ids: Union[list, DF], x_size: Union[list, DF], y_size: Union[list, DF],
-                        y_pos: Optional[list], do_illum_cor: bool, scan_mode: str) -> List[Image]:
+                        y_pos: Optional[list], do_illum_cor: bool, scan_mode: str) -> Image:
     """ Create max z projection for each field of view """
     z_max_fov_list = create_z_projection_for_fov(channel_name, fields_path_list)
     if do_illum_cor:
         z_max_fov_list = equalize_histogram(z_max_fov_list)
-        z_proj = stitch_images(z_max_fov_list, ids, x_size, y_size, y_pos, scan_mode)
-    else:
-        z_proj = stitch_images(z_max_fov_list, ids, x_size, y_size, y_pos, scan_mode)
 
-    return z_proj
+    return stitch_images(z_max_fov_list, ids, x_size, y_size, y_pos, scan_mode)
 
 
 def crop_images_scan_manual(images: List[Image], ids: Union[list, DF],
@@ -132,7 +129,7 @@ def crop_images_scan_auto(images: List[Image], ids: Union[list, DF],
 
 def stitch_images(images: List[Image], ids: Union[list, DF],
                   x_size: Union[list, DF], y_size: Union[list, DF],
-                  y_pos: Optional[list], scan_mode: str) -> List[Image]:
+                  y_pos: Optional[list], scan_mode: str) -> Image:
     """ Stitch cropped images by concatenating them horizontally and vertically """
 
     dtype = images[0].dtype.type
