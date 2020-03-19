@@ -70,6 +70,12 @@ def get_image_positions_scan_manual(tag_Images: XML, reference_channel: str, fov
     # get microscope coordinates of images from xml file
     x_pos, y_pos, img_pos = get_positions_from_xml(tag_Images, reference_channel, fovs)
 
+    if fovs is not None:
+        fovs = [i - 1 for i in fovs]
+        min_fovs = min(fovs)
+        fovs = [i - min_fovs for i in fovs]
+        img_pos = [(pos[0], pos[1], pos[2] - min_fovs) for pos in img_pos]
+
     # centering coordinates to 0,0
     leftmost = min(x_pos)
     top = max(y_pos)
@@ -154,9 +160,12 @@ def get_image_sizes_scan_auto(tag_Images: XML, reference_channel: str, fovs: Uni
     # get microscope coordinates of images from xml file
     x_pos, y_pos, img_pos = get_positions_from_xml(tag_Images, reference_channel, fovs)
 
-    # !IMPORTANT need to mutate fovs to start indexing from 0 for proper clustering
+    # !IMPORTANT need to mutate fovs to start indexing from 0, and start from 0 for proper clustering
     if fovs is not None:
         fovs = [i - 1 for i in fovs]
+        min_fovs = min(fovs)
+        fovs = [i - min_fovs for i in fovs]
+        img_pos = [(pos[0], pos[1], pos[2] - min_fovs) for pos in img_pos]
 
     default_img_width = int(tag_Images[0].find('ImageSizeX').text)
     default_img_height = int(tag_Images[0].find('ImageSizeY').text)
@@ -276,19 +285,6 @@ def get_image_sizes_scan_auto(tag_Images: XML, reference_channel: str, fovs: Uni
                 elif i not in rows_to_remove:
                     new_row_list.append(row_list[i])
             row_list = new_row_list
-
-
-    """
-    for i, cluster in enumerate(y_range):
-        this_cluster_ids = ids_in_clusters[i]
-        for y in cluster:
-            row = [j for j in img_pos if j[1] == y and j[2] in this_cluster_ids]
-            if row == []:
-                continue
-            else:
-                row = sorted(row, key=lambda x: x[0])  # sort by x coordinate
-                row_list.append(row)
-    """
 
     # create image sizes based on difference in coordinates
     x_sizes_per_row = []
