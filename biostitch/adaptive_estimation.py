@@ -23,13 +23,14 @@ class AdaptiveShiftEstimation:
         self._micro_x_size = None
         self._micro_y_size = None
         self._ids_in_clusters = []
+        self._y_pos = []
         self._default_image_shape = (0, 0)
 
-    def estimate(self, images: List[Image]) -> Union[Tuple[DF, DF, DF], Tuple[list, list, list]]:
+    def estimate(self, images: List[Image]) -> Union[Tuple[DF, DF, DF, None], Tuple[list, list, list, list]]:
         self._default_image_shape = images[0].shape
         if self._scan == 'auto':
             ids, x_size, y_size = self.estimate_image_sizes_scan_auto(images)
-            return ids, x_size, y_size
+            return ids, x_size, y_size, self._y_pos
         elif self._scan == 'manual':
             x_size, y_size = self.estimate_image_sizes_scan_manual(images)
             ids = pd.DataFrame(self._micro_ids)
@@ -41,7 +42,7 @@ class AdaptiveShiftEstimation:
                         ids.loc[i, j] = val
                     except ValueError:
                         pass
-            return pd.DataFrame(self._micro_ids), pd.DataFrame(x_size), pd.DataFrame(y_size)
+            return pd.DataFrame(self._micro_ids), pd.DataFrame(x_size), pd.DataFrame(y_size), None
 
     def estimate_image_sizes_scan_manual(self, images: List[Image]) -> Tuple[DF, DF]:
         x_size = self.find_shift_x_scan_manual(images)
@@ -192,6 +193,16 @@ class AdaptiveShiftEstimation:
             ids.extend(micro_ids_sub)
             x_sizes.extend(this_cluster_x_sizes)
             y_sizes.extend(this_cluster_y_sizes)
+
+        # correct y positions using y sizes
+        diffs = []
+        for row in range(0, len(y_sizes)):
+            diffs.append(y_sizes[row][0] - micro_y_sizes[row][0])  # estimated - initial
+        diffs = list(np.cumsum(diffs))
+        diffs.insert(0, 0)
+        for i in range(0, len(self._y_pos)):
+            self._y_pos[i] += diffs[i]
+
         return ids, x_sizes, y_sizes
 
     def calculate_image_sizes_scan_auto(self, images: List[Image], micro_ids: list, micro_x_sizes: list, micro_y_sizes: list) -> Tuple[list, list]:
@@ -383,3 +394,11 @@ class AdaptiveShiftEstimation:
     @ids_in_clusters.setter
     def ids_in_clusters(self, value: list):
         self._ids_in_clusters = value
+
+    @property
+    def y_pos(self):
+        return self._y_pos
+
+    @y_pos.setter
+    def y_pos(self, value: list):
+        self._y_pos = value

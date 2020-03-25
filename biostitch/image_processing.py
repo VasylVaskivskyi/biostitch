@@ -89,15 +89,15 @@ def crop_images_scan_manual(images: List[Image], ids: Union[list, DF],
     x_sizes = x_sizes.to_list()
     y_sizes = y_sizes.to_list()
     ids = ids.to_list()
-    default_img_shape = images[0].shape
+    #default_img_shape = images[0].shape
     dtype = images[0].dtype.type
     r_images = []
     for j, _id in enumerate(ids):
         if _id == 'zeros':
             img = np.zeros((y_sizes[j], x_sizes[j]), dtype=dtype)
         else:
-            x_shift = default_img_shape[1] - x_sizes[j]
-            y_shift = default_img_shape[0] - y_sizes[j]
+            #x_shift = default_img_shape[1] - x_sizes[j]
+            #y_shift = default_img_shape[0] - y_sizes[j]
             _id = int(_id)
             img = images[_id][:y_sizes[j], :x_sizes[j]]
         r_images.append(img)
@@ -106,7 +106,7 @@ def crop_images_scan_manual(images: List[Image], ids: Union[list, DF],
 
 def crop_images_scan_auto(images: List[Image], ids: Union[list, DF],
                           x_sizes: Union[list, DF], y_sizes: Union[list, DF]) -> List[Image]:
-    default_img_shape = images[0].shape
+    #default_img_shape = images[0].shape
     dtype = images[0].dtype.type
     r_images = []
 
@@ -118,8 +118,8 @@ def crop_images_scan_auto(images: List[Image], ids: Union[list, DF],
             # do not ignore 0 padding images inside the row
             img = np.zeros((y_sizes[j], x_sizes[j]), dtype=dtype)
         else:
-            x_shift = default_img_shape[1] - x_sizes[j]
-            y_shift = default_img_shape[0] - y_sizes[j]
+            #x_shift = default_img_shape[1] - x_sizes[j]
+            #y_shift = default_img_shape[0] - y_sizes[j]
             img = images[_id][:y_sizes[j], :x_sizes[j]]
 
         r_images.append(img)

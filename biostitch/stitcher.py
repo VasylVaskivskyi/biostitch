@@ -42,6 +42,7 @@ class ImageStitcher:
         self._preview_ome_meta = ''
         self._channel_ids = {}
         self._y_pos = None
+        self._default_img_shape = tuple()
 
 
     def stitch(self):
@@ -52,6 +53,9 @@ class ImageStitcher:
         self.check_scan_modes()
 
         tag_Images, field_path_list, plane_path_list = self.load_metadata()
+        self._default_img_shape = (int(tag_Images[0].find('ImageSizeY').text), int(tag_Images[0].find('ImageSizeX').text))
+
+
         ids, x_size, y_size = self.estimate_image_sizes(tag_Images, field_path_list)
         self.generate_ome_meta(self._channel_ids, x_size, y_size, tag_Images, plane_path_list)
         self.perform_stitching(ids, x_size, y_size, plane_path_list, field_path_list, self._ome_meta)
@@ -138,7 +142,7 @@ class ImageStitcher:
 
             if self._scan == 'auto':
                 ids, x_size, y_size, ids_in_clusters, self._y_pos = get_image_sizes_scan_auto(tag_Images, self._reference_channel, self._fovs)
-                micro_y_size = copy.deepcopy(y_size)
+                #micro_y_size = copy.deepcopy(y_size)
                 
             elif self._scan == 'manual':
                 ids, x_size, y_size = get_image_sizes_scan_manual(tag_Images, self._reference_channel, self._fovs)
@@ -153,15 +157,9 @@ class ImageStitcher:
                 estimator.micro_y_size = y_size
                 if self._scan == 'auto':
                     estimator.ids_in_clusters = ids_in_clusters
-                ids, x_size, y_size = estimator.estimate(z_max_img_list)
-                if self._scan == 'auto':
-                    diffs = []
-                    for row in range(0, len(y_size)):
-                        diffs.append(y_size[row][0] - micro_y_size[row][0])  # estimated - initial
-                    diffs = list(np.cumsum(diffs))
-                    diffs.insert(0, 0)
-                    for i in range(0, len(self._y_pos)):
-                        self._y_pos[i] += diffs[i]
+                    estimator.y_pos = self._y_pos
+                ids, x_size, y_size, self._y_pos = estimator.estimate(z_max_img_list)
+
                 if self._make_preview:
                     self.generate_preview(ids, x_size, y_size, self._y_pos, self._preview_ome_meta, z_max_img_list)
                 del z_max_img_list
@@ -183,8 +181,8 @@ class ImageStitcher:
     def generate_ome_meta(self, channel_ids, x_size, y_size, tag_Images, plane_path_list):
         # width and height of single plain
         if self._scan == 'auto':
-            width = sum(x_size[0])
-            height = sum([row[0] for row in y_size])
+            width = max([sum(row) for row in x_size])
+            height = max(self._y_pos) + self._default_img_shape[0]
         elif self._scan == 'manual':
             width = sum(x_size.iloc[0, :])
             height = sum(y_size.iloc[:, 0])
