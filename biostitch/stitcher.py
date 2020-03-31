@@ -4,6 +4,7 @@ import os
 from datetime import datetime
 
 import numpy as np
+import pandas as pd
 import tifffile as tif
 from tifffile import TiffWriter
 
@@ -54,7 +55,6 @@ class ImageStitcher:
 
         tag_Images, field_path_list, plane_path_list = self.load_metadata()
         self._default_img_shape = (int(tag_Images[0].find('ImageSizeY').text), int(tag_Images[0].find('ImageSizeX').text))
-
 
         ids, x_size, y_size = self.estimate_image_sizes(tag_Images, field_path_list)
         self.generate_ome_meta(self._channel_ids, x_size, y_size, tag_Images, plane_path_list)
@@ -142,10 +142,21 @@ class ImageStitcher:
 
             if self._scan == 'auto':
                 ids, x_size, y_size, ids_in_clusters, self._y_pos = get_image_sizes_scan_auto(tag_Images, self._reference_channel, self._fovs)
-                #micro_y_size = copy.deepcopy(y_size)
                 
             elif self._scan == 'manual':
                 ids, x_size, y_size = get_image_sizes_scan_manual(tag_Images, self._reference_channel, self._fovs)
+                if self._is_adaptive == False:
+                    ids = pd.DataFrame(ids)
+                    x_size = pd.DataFrame(x_size)
+                    y_size = pd.DataFrame(y_size)
+                    for j in ids.columns:
+                        for i in ids.index:
+                            try:
+                                val = ids.loc[i, j]
+                                val = int(val)
+                                ids.loc[i, j] = val
+                            except ValueError:
+                                pass
 
             if self._is_adaptive:
                 print('estimating image shifts')

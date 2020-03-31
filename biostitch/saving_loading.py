@@ -55,6 +55,13 @@ def save_parameters(dir_path, scan, ids, x_size, y_size, y_pos):
         with open(dir_path + 'y_pos.txt', 'w') as f:
             f.write(','.join(str(i) for i in y_pos) + '\n')
     elif scan == 'manual':
+        if not isinstance(ids, pd.DataFrame):
+            ids = pd.DataFrame(ids)
+        if not isinstance(x_size, pd.DataFrame):
+            ids = pd.DataFrame(x_size)
+        if not isinstance(y_size, pd.DataFrame):
+            ids = pd.DataFrame(y_size)
+
         ids.to_csv(dir_path + 'image_ids.csv')
         x_size.to_csv(dir_path + 'x_sizes.csv')
         y_size.to_csv(dir_path + 'y_sizes.csv')
