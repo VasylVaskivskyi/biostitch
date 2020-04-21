@@ -26,7 +26,7 @@ class AdaptiveShiftEstimation:
         self._y_pos = []
         self._default_image_shape = (0, 0)
 
-    def estimate(self, images: List[Image]) -> Union[Tuple[DF, DF, DF, None], Tuple[list, list, list, list]]:
+    def estimate(self, images: Tuple[Image]) -> Union[Tuple[DF, DF, DF, None], Tuple[list, list, list, list]]:
         self._default_image_shape = images[0].shape
         if self._scan == 'auto':
             ids, x_size, y_size = self.estimate_image_sizes_scan_auto(images)
@@ -44,7 +44,7 @@ class AdaptiveShiftEstimation:
                         pass
             return pd.DataFrame(self._micro_ids), pd.DataFrame(x_size), pd.DataFrame(y_size), None
 
-    def estimate_image_sizes_scan_manual(self, images: List[Image]) -> Tuple[DF, DF]:
+    def estimate_image_sizes_scan_manual(self, images: Tuple[Image]) -> Tuple[DF, DF]:
         x_size = self.find_shift_x_scan_manual(images)
         y_size = self.find_shift_y_scan_manual(images)
         return x_size, y_size
@@ -54,12 +54,16 @@ class AdaptiveShiftEstimation:
         arr = array.copy()
         if mode == 'row':
             nrows = arr.shape[0]
-            row_medians = list(np.nanmedian(arr, axis=1))
+            row_medians = np.nanmedian(arr, axis=1)
+            total_row_median = np.nanmedian(row_medians)  # median of medians
+            row_medians = list(np.nan_to_num(row_medians, nan=total_row_median))  # replace NaNs with median of medians
             for i in range(0, nrows):
                 arr[i, :] = int(round(row_medians[i]))
         elif mode == 'col':
             ncols = arr.shape[1]
-            col_medians = list(np.nanmedian(arr, axis=0))
+            col_medians = np.nanmedian(arr, axis=0)
+            total_col_median = np.nanmedian(col_medians)
+            col_medians = list(np.nan_to_num(col_medians, nan=total_col_median))
             for i in range(0, ncols):
                 arr[:, i] = int(round(col_medians[i]))
 
@@ -103,7 +107,7 @@ class AdaptiveShiftEstimation:
 
         return pairwise_shift
 
-    def find_shift_row_col(self, images: List[Image], id_list: list, size_list: list, mode: str) -> list:
+    def find_shift_row_col(self, images: Tuple[Image], id_list: list, size_list: list, mode: str) -> list:
         if mode == 'row':
             axis = 1
         elif mode == 'col':
@@ -129,7 +133,7 @@ class AdaptiveShiftEstimation:
         res[-1] = self._default_image_shape[axis]
         return res
 
-    def find_shift_x_scan_manual(self, images: List[Image]) -> DF:
+    def find_shift_x_scan_manual(self, images: Tuple[Image]) -> DF:
         ids = self._micro_ids
         x_size = ids.copy()
         x_size[:, :] = 0.0
@@ -142,7 +146,7 @@ class AdaptiveShiftEstimation:
         x_size = x_size.astype(np.int32)
         return x_size
 
-    def find_shift_y_scan_manual(self, images: List[Image]) -> DF:
+    def find_shift_y_scan_manual(self, images: Tuple[Image]) -> DF:
         ids = self._micro_ids
         y_size = ids.copy()
         y_size[:, :] = 0.0
@@ -157,7 +161,7 @@ class AdaptiveShiftEstimation:
 
     # ----------- Estimation of auto scanned images -----------------
 
-    def estimate_image_sizes_scan_auto(self, images: List[Image]) -> Tuple[list, list, list]:
+    def estimate_image_sizes_scan_auto(self, images: Tuple[Image]) -> Tuple[list, list, list]:
         # size from microscope xml metadata
         ids_in_clusters = self._ids_in_clusters
         micro_ids = self._micro_ids
@@ -205,7 +209,7 @@ class AdaptiveShiftEstimation:
 
         return ids, x_sizes, y_sizes
 
-    def calculate_image_sizes_scan_auto(self, images: List[Image], micro_ids: list, micro_x_sizes: list, micro_y_sizes: list) -> Tuple[list, list]:
+    def calculate_image_sizes_scan_auto(self, images: Tuple[Image], micro_ids: list, micro_x_sizes: list, micro_y_sizes: list) -> Tuple[list, list]:
         # estimate row width and height
         est_x_sizes = []
         est_y_sizes = []
@@ -268,7 +272,7 @@ class AdaptiveShiftEstimation:
         y_sizes = y_sizes_arr
         return x_sizes, y_sizes
 
-    def find_shift_x_scan_auto(self, images: List[Image], ids: list, x_sizes: list) -> list:
+    def find_shift_x_scan_auto(self, images: Tuple[Image], ids: list, x_sizes: list) -> list:
         res = [0] * len(ids)
 
         add_prcnt = int(round(self._default_image_shape[1] * 0.01))
