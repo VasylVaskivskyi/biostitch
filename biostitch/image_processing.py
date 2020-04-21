@@ -143,7 +143,7 @@ def stitch_images(images: Tuple[Image], ids: Union[list, DF],
         # padding values are used to calculate horizontal position
         # cumulative sum is used to calculate vertical position
         left_pad = [row[0] for row in x_size]
-        right_pad = [sum(row[:-1]) for row in x_size]
+        #right_pad = [sum(row[:-1]) for row in x_size]
 
         # y_pos_in_big_img = list(np.cumsum([row[0] for row in y_size]))
         # y_pos_in_big_img.insert(0, 0)
@@ -153,7 +153,8 @@ def stitch_images(images: Tuple[Image], ids: Union[list, DF],
             f = y_pos[row]  # from
             img_row = np.concatenate(crop_images_scan_auto(images, ids[row], x_size[row], y_size[row]), axis=1)
             t = f + img_row.shape[0]  # to
-            res[f:t, left_pad[row]:right_pad[row]] = img_row
+            right_pad = left_pad[row] + img_row.shape[1]
+            res[f:t, left_pad[row]:right_pad] = img_row
 
     elif scan_mode == 'manual':
         big_img_width = sum(x_size.iloc[0, :])
