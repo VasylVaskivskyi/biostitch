@@ -227,7 +227,7 @@ class ImageStitcher:
 
         if self._stitching_mode == 'stack':
             output_path_stack = self._out_dir + self._img_name
-            delete = '\b'*20
+            delete = '\b'*25
             with TiffWriter(output_path_stack, bigtiff=True) as TW:
                 for i, channel in enumerate(self._channel_names):
                     print('\nprocessing channel no.{0}/{1} {2}'.format(i + 1, self._nchannels, channel))
@@ -238,7 +238,7 @@ class ImageStitcher:
                                 photometric='minisblack', contiguous=True, description=metadata)
 
         elif self._stitching_mode == 'maxz':
-            output_path_maxz = self._out_dir + 'maxz_' + self._img_name
+            output_path_maxz = self._out_dir + self._img_name
             with TiffWriter(output_path_maxz, bigtiff=True) as TW:
                 for i, channel in enumerate(self._channel_names):
                     print('\nprocessing channel no.{0}/{1} {2}'.format(i + 1, self._nchannels, channel))
