@@ -10,7 +10,7 @@ from tifffile import TiffWriter
 
 from .adaptive_estimation import AdaptiveShiftEstimation
 from .image_positions import load_necessary_xml_tags, get_image_sizes_scan_auto, get_image_sizes_scan_manual, \
-    get_image_paths_for_fields_per_channel, get_image_paths_for_planes_per_channel
+    get_path_for_each_plane_and_field_per_channel
 from .image_processing import stitch_z_projection, create_z_projection_for_fov, stitch_plane, stitch_images
 from .ome_tags import create_ome_metadata, get_channel_metadata
 from .saving_loading import load_parameters, save_parameters
@@ -94,8 +94,7 @@ class ImageStitcher:
         if self._fovs is not None:
             self._fovs = [int(f) for f in self._fovs.split(',')]
 
-        field_path_list = get_image_paths_for_fields_per_channel(self._img_dir, tag_Images, self._fovs)
-        plane_path_list = get_image_paths_for_planes_per_channel(self._img_dir, tag_Images, self._fovs)
+        plane_path_list, field_path_list = get_path_for_each_plane_and_field_per_channel(tag_Images, self._img_dir, self._fovs)
         nchannels = len(plane_path_list.keys())
         channel_names = list(plane_path_list.keys())
         channel_ids = {ch: i for i, ch in enumerate(channel_names)}

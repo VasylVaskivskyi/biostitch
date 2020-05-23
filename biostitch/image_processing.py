@@ -182,10 +182,16 @@ def stitch_plane(plane_paths: List[str], ids: Union[list, DF],
     """ Do histogram normalization and stitch multiple images into one plane """
     images = read_images(plane_paths, is_dir=False)
     dtype = images[0].dtype.type
-    ncols = sum(x_size.iloc[0, :])
-    nrows = sum(y_size.iloc[:, 0])
+    if scan_mode == 'manual':
+        ncols = sum(x_size.iloc[0, :])
+        nrows = sum(y_size.iloc[:, 0])
+    elif scan_mode == 'auto':
+        ncols = sum(x_size[0])
+        nrows = sum(row[0] for row in y_size)
     result_plane = np.zeros((1, nrows, ncols), dtype=dtype)
     if do_illum_cor:
         images = equalize_histogram(images)
+
+
     result_plane[0, :, :] = stitch_images(images, ids, x_size, y_size, y_pos, scan_mode)
     return result_plane
