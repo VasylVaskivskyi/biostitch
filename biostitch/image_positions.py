@@ -90,7 +90,56 @@ def zero_center_coordinates(x_pos: list, y_pos: list, img_pos: list):
             x_pos = [i - leftmost for i in x_pos]
             y_pos = [top - i for i in y_pos]
 
+
     return x_pos, y_pos, img_pos
+
+
+def img_pos_to_size(img_pos_per_row: list, default_img_width: int, default_img_height: int):
+    """ Create image sizes based on difference in coordinates """
+    y_sizes = [row[0][1] for row in img_pos_per_row]
+    y_sizes = np.diff(y_sizes).tolist()
+    y_sizes.append(default_img_height)
+
+    x_sizes_per_row = []
+    width_per_row = []
+    for row in img_pos_per_row:
+        x_coords = [i[0] for i in row]
+        img_ids = [i[2] for i in row]
+
+        if len(row) == 1:
+            row_x_sizes = [(x_coords[0], 'zeros'), (default_img_width, img_ids[0])]
+        else:
+            # start each row with zero padding and full width image
+            row_x_sizes = [(x_coords[0], 'zeros'), (x_coords[1] - x_coords[0], img_ids[0])]
+            # detect gaps between images
+            for i in range(1, len(x_coords)):
+                size = x_coords[i] - x_coords[i - 1]
+                # if difference between two adjacent pictures is bigger than width of default picture,
+                # then consider this part as a gap, subtract img size from it, and consider the rest as size of a gap
+                if size > default_img_width:
+                    image_size = default_img_width
+                    gap_size = size - default_img_width
+                    row_x_sizes.extend([(gap_size, 'zeros'), (image_size, img_ids[i])])
+                else:
+                    row_x_sizes.append((size, img_ids[i]))
+
+        row_width = sum([i[0] for i in row_x_sizes])
+        width_per_row.append(row_width)
+
+        x_sizes_per_row.append(row_x_sizes)
+
+    # add zero padding to the end of each row
+    max_width = max(width_per_row)
+    for i in range(0, len(width_per_row)):
+        diff = max_width - width_per_row[i]
+        x_sizes_per_row[i].append((diff, 'zeros'))
+
+    # adding y_coordinate to tuple
+    for row in range(0, len(x_sizes_per_row)):
+        x_sizes_per_row[row] = [(i[0], y_sizes[row], i[1]) for i in x_sizes_per_row[row]]
+    img_sizes_per_row = x_sizes_per_row
+
+    return img_sizes_per_row
 
 
 
@@ -134,28 +183,36 @@ def get_image_positions_scan_manual(tag_Images: XML, reference_channel: str, fov
         y_pos.append([i[1] for i in row])
         ids.append([i[2] for i in row])
 
-    return ids, x_pos, y_pos
+    return ids, x_pos, y_pos, row_list
 
 
 def get_image_sizes_scan_manual(tag_Images: XML, reference_channel: str, fovs: Union[None, List[int]]) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    ids, x_pos, y_pos = get_image_positions_scan_manual(tag_Images, reference_channel, fovs)
+    ids, x_pos, y_pos, row_list = get_image_positions_scan_manual(tag_Images, reference_channel, fovs)
 
-    ids = np.array(ids)
-    x_pos = np.array(x_pos)
-    y_pos = np.array(y_pos)
+    #ids = np.array(ids)
+    #x_pos = np.array(x_pos)
+    #y_pos = np.array(y_pos)
 
     # assuming that all images are of the same size, so default image size from first image in xml are taken
     default_img_width = int(tag_Images[0].find('ImageSizeX').text)
     default_img_height = int(tag_Images[0].find('ImageSizeY').text)
 
-    # set size of first column and first row to the size of single picture
-    x_size = np.diff(x_pos, axis=1)
-    y_size = np.diff(y_pos, axis=0)
 
-    last_x_col = np.array([[default_img_width]] * ids.shape[0])
-    last_y_row = np.array([[default_img_height] * ids.shape[1]])
-    x_size = np.concatenate((x_size, last_x_col), axis=1)
-    y_size = np.concatenate((y_size, last_y_row), axis=0)
+    # create image sizes based on difference in coordinates
+
+    img_sizes_per_row = img_pos_to_size(row_list, default_img_width, default_img_height)
+
+    ids = []
+    x_size = []
+    y_size = []
+    for row in img_sizes_per_row:
+        x_size.append([i[0] for i in row])
+        y_size.append([i[1] for i in row])
+        ids.append([i[2] for i in row])
+
+    ids = np.array(ids)
+    x_size = np.array(x_size)
+    y_size = np.array(y_size)
 
     return ids, x_size, y_size
 
@@ -272,51 +329,12 @@ def get_image_sizes_scan_auto(tag_Images: XML, reference_channel: str, fovs: Uni
             row_list = new_row_list
 
     # create image sizes based on difference in coordinates
-    x_sizes_per_row = []
-    width_per_row = []
-    for row in row_list:
-        x_coords = [i[0] for i in row]
-        img_ids = [i[2] for i in row]
-
-        if len(row) == 1:
-            row_x_sizes = [(x_coords[0], 'zeros'), (default_img_width, img_ids[0])]
-        else:
-            # start each row with zero padding and full width image
-            row_x_sizes = [(x_coords[0], 'zeros'), (x_coords[1] - x_coords[0], img_ids[0])]
-            # detect gaps between images
-            for i in range(1, len(x_coords)):
-                size = x_coords[i] - x_coords[i - 1]
-                # if difference between two adjacent pictures is bigger than width of default picture,
-                # then consider this part as a gap, subtract img size from it, and consider the rest as size of a gap
-                if size > default_img_width:
-                    image_size = default_img_width
-                    gap_size = size - default_img_width
-                    row_x_sizes.extend([(gap_size, 'zeros'), (image_size, img_ids[i])])
-                else:
-                    row_x_sizes.append((size, img_ids[i]))
-
-        row_width = sum([i[0] for i in row_x_sizes])
-        width_per_row.append(row_width)
-
-        x_sizes_per_row.append(row_x_sizes)
-
-    # add zero padding to the end of each row
-    max_width = max(width_per_row)
-    for i in range(0, len(width_per_row)):
-        diff = max_width - width_per_row[i]
-        x_sizes_per_row[i].append((diff, 'zeros'))
-
-    # adding y_coordinate to tuple
-    for row in range(0, len(x_sizes_per_row)):
-        x_sizes_per_row[row] = [(i[0], y_sizes[row], i[1]) for i in x_sizes_per_row[row]]
-
-    # total_height = sum(y_sizes)
-    # total_width = max_width
+    img_sizes_per_row = img_pos_to_size(row_list, default_img_width, default_img_height)
 
     ids = []
     x_size = []
     y_size = []
-    for row in x_sizes_per_row:
+    for row in img_sizes_per_row:
         x_size.append([i[0] for i in row])
         y_size.append([i[1] for i in row])
         ids.append([i[2] for i in row])
